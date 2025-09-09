@@ -1,0 +1,91 @@
+/* Variáveis CSS */
+:root {
+  /* Cores */
+  --primary: #0B6E4F;
+  --secondary: #F59E0B;
+  --neutral-900: #111827;
+  --neutral-muted: #6B7280;
+  --neutral-bg: #F3F4F6;
+  --error: #DC2626;
+  --white: #FFFFFF;
+  
+  /* Espaçamento */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  
+  /* Botões */
+  --btn-lg: 48px;
+  --btn-md: 40px;
+  --btn-sm: 32px;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  color: var(--neutral-900);
+  background-color: var(--neutral-bg);
+}
+
+/* Tipografia */
+h1, h2, h3 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+h1 { font-size: 32px; }
+h2 { font-size: 24px; }
+
+p {
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.text-sm { font-size: 14px; }
+.text-muted { color: var(--neutral-muted); }
+
+/* Botões */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-6);
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-lg { height: var(--btn-lg); }
+.btn-md { height: var(--btn-md); }
+.btn-sm { height: var(--btn-sm); }
+
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--white);
+}
+
+.btn-secondary {
+  background-color: var(--secondary);
+  color: var(--white);
+}
+
+/* Card */
+.card {
+  background-color: var(--white);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Container */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+}
