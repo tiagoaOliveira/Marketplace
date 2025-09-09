@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom'
 import './Header.css'
 import Carrossel from './Carrossel'
 import Produtos from './Produtos'
+import Categorias from './Categorias'
 
 function Header() {
   return (
-    <header className="header">
+    <body className="header">
       <div className="header-container">
         <div className="header-logo">
           <Link to="/">
@@ -25,19 +26,20 @@ function Header() {
           </Link>
         </div>
       </div>
-              <div className="header-search">
-          <div className="search-wrapper">
-            <Search className="search-icon" size={26} />
-            <input
-              type="text"
-              placeholder=" Buscar produtos..."
-              className="search-input"
-            />
-          </div>
+      <div className="header-search">
+        <div className="search-wrapper">
+          <Search className="search-icon" size={26} />
+          <input
+            type="text"
+            placeholder=" Buscar produtos..."
+            className="search-input"
+          />
         </div>
-        <Carrossel/>
-        <Produtos/>
-    </header>
+      </div>
+      <Carrossel />
+      <Categorias />
+      <Produtos />
+    </body>
   )
 }
 
