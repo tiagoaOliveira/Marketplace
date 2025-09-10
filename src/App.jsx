@@ -6,7 +6,7 @@ import Perfil from './pages/Perfil'
 
 function App() {
   return (
-    <BrowserRouter basename="/">
+    <BrowserRouter basename="/Marketplace">
       <Routes>
         <Route path="/" element={<Header />} />
         <Route path="/carrinho" element={<Carrinho />} />
