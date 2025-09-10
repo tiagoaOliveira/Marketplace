@@ -214,7 +214,7 @@
 
 @media (max-width: 768px) {
   .carrinho-container {
-    padding: var(--space-4);
+    padding: 1rem 0.5rem;
   }
   
   .carrinho-header {
@@ -227,7 +227,7 @@
   .carrinho-item {
     padding: 0rem;
     text-align: center;
-    gap: var(--space-3);
+    gap: var(--space-2);
   }
   
   .item-detalhes {
@@ -237,5 +237,10 @@
   .item-controles {
     order: 3;
     justify-content: center;
+    gap: 0;
+  }
+
+  .quantidade-controles {
+    gap: 0;
   }
 }
