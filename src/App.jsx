@@ -1,24 +1,18 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
+import Carrinho from './pages/Carrinho'
+import Perfil from './pages/Perfil'
 
-
-
-function Home() {
-  return (
-    <></>
-  )
-}
 
 function App() {
   return (
-    <Router>
-      <Header />
-      <main>
-        <Routes>
-          <Route path="/" element={<Home />} />
-        </Routes>
-      </main>
-    </Router>
+    <BrowserRouter basename="/Marketplace">
+      <Routes>
+        <Route path="/" element={<Header />} />
+        <Route path="/carrinho" element={<Carrinho />} />
+        <Route path="/perfil" element={<Perfil />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 

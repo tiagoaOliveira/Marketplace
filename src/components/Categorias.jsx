@@ -20,7 +20,7 @@ const CategoriasShowcase = () => {
     },
     {
       id: 4,
-      nome: "Casa Construção",
+      nome: "Construção",
       icone: "🎮",
     },
     {
@@ -31,6 +31,21 @@ const CategoriasShowcase = () => {
     {
       id: 6,
       nome: "Farmácia",
+      icone: "📷",
+    },
+    {
+      id:7,
+      nome:"Moda",
+      icone: "📷",
+    },
+        {
+      id:8,
+      nome:"Sorveteria",
+      icone: "📷",
+    },
+        {
+      id:9,
+      nome:"Lanches",
       icone: "📷",
     }
   ];

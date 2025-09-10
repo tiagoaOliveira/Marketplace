@@ -7,7 +7,7 @@ import Categorias from './Categorias'
 
 function Header() {
   return (
-    <body className="header">
+    <div className="header">
       <div className="header-container">
         <div className="header-logo">
           <Link to="/">
@@ -15,14 +15,11 @@ function Header() {
           </Link>
         </div>
         <div className="header-actions">
-          <Link to="/account" className="header-btn">
-            <User size={28} />
-          </Link>
-          <Link to="/favorites" className="header-btn">
-            <Heart size={28} />
-          </Link>
-          <Link to="/cart" className="header-btn">
+          <Link to="Carrinho" className="header-btn">
             <ShoppingCart size={28} />
+          </Link>
+          <Link to="/Perfil" className="header-btn">
+            <User size={28} />
           </Link>
         </div>
       </div>
@@ -39,7 +36,7 @@ function Header() {
       <Carrossel />
       <Categorias />
       <Produtos />
-    </body>
+    </div>
   )
 }
 
