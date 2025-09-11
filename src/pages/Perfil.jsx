@@ -1,31 +1,146 @@
-import React, { useState } from 'react';
-import './Perfil.css';
+// src/pages/Perfil.jsx
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import './Perfil.css'
 
 const PerfilUsuario = () => {
-  const [usuarioLogado, setUsuarioLogado] = useState(false);
-  const [telaAtiva, setTelaAtiva] = useState('menu'); // menu, cadastro, login, dados, loja
+  const { user, userProfile, signUp, signIn, signOut, updateProfile, loading, error, isAuthenticated } = useAuth()
+  const [telaAtiva, setTelaAtiva] = useState('menu')
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    fullname: '',
+    phone: ''
+  })
+  const [formErrors, setFormErrors] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    // Preencher form com dados do usuário quando carregados
+    if (userProfile) {
+      setFormData(prev => ({
+        ...prev,
+        fullname: userProfile.fullname || '',
+        email: userProfile.email || '',
+        phone: userProfile.phone || ''
+      }))
+    }
+  }, [userProfile])
 
   const handleVoltar = () => {
     if (telaAtiva === 'menu') {
-      window.history.back();
+      window.history.back()
     } else {
-      setTelaAtiva('menu');
+      setTelaAtiva('menu')
+      setFormErrors({})
     }
-  };
+  }
 
-  const handleLogin = () => {
-    setUsuarioLogado(true);
-    setTelaAtiva('menu');
-  };
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+    // Limpar erro do campo quando usuário digita
+    if (formErrors[name]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }))
+    }
+  }
 
-  const handleLogout = () => {
-    setUsuarioLogado(false);
-    setTelaAtiva('menu');
-  };
+  const validateForm = (type) => {
+    const errors = {}
+    
+    if (type === 'cadastro') {
+      if (!formData.fullname.trim()) errors.fullname = 'Nome é obrigatório'
+      if (!formData.email.trim()) errors.email = 'Email é obrigatório'
+      if (!formData.password) errors.password = 'Senha é obrigatória'
+      if (formData.password.length < 6) errors.password = 'Senha deve ter pelo menos 6 caracteres'
+      if (formData.password !== formData.confirmPassword) {
+        errors.confirmPassword = 'Senhas não coincidem'
+      }
+    }
+    
+    if (type === 'login') {
+      if (!formData.email.trim()) errors.email = 'Email é obrigatório'
+      if (!formData.password) errors.password = 'Senha é obrigatória'
+    }
+
+    if (type === 'dados') {
+      if (!formData.fullname.trim()) errors.fullname = 'Nome é obrigatório'
+      if (formData.phone && !/^\(\d{2}\)\s\d{4,5}-\d{4}$/.test(formData.phone)) {
+        errors.phone = 'Formato: (11) 99999-9999'
+      }
+    }
+
+    return errors
+  }
+
+  const handleSubmit = async (e, type) => {
+    e.preventDefault()
+    
+    const errors = validateForm(type)
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
+
+    setIsSubmitting(true)
+    setFormErrors({})
+
+    try {
+      if (type === 'cadastro') {
+        const { error } = await signUp(formData.email, formData.password, formData.fullname)
+        if (error) {
+          setFormErrors({ submit: error })
+        } else {
+          setTelaAtiva('menu')
+          // Limpar form
+          setFormData({ email: '', password: '', confirmPassword: '', fullname: '', phone: '' })
+        }
+      }
+
+      if (type === 'login') {
+        const { error } = await signIn(formData.email, formData.password)
+        if (error) {
+          setFormErrors({ submit: error })
+        } else {
+          setTelaAtiva('menu')
+          setFormData({ email: '', password: '', confirmPassword: '', fullname: '', phone: '' })
+        }
+      }
+
+      if (type === 'dados') {
+        const updates = {
+          fullname: formData.fullname,
+          phone: formData.phone || null
+        }
+        const { error } = await updateProfile(updates)
+        if (error) {
+          setFormErrors({ submit: error })
+        } else {
+          setTelaAtiva('menu')
+        }
+      }
+    } catch (err) {
+      setFormErrors({ submit: 'Erro inesperado. Tente novamente.' })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    await signOut()
+    setTelaAtiva('menu')
+  }
 
   const renderMenu = () => (
     <div className="conta-menu">
-      {!usuarioLogado ? (
+      {!isAuthenticated ? (
         <>
           <div className="conta-opcao" onClick={() => setTelaAtiva('login')}>
             <span className="opcao-icone">🔑</span>
@@ -68,77 +183,175 @@ const PerfilUsuario = () => {
         </>
       )}
     </div>
-  );
+  )
 
   const renderCadastro = () => (
-    <form className="conta-form">
+    <form className="conta-form" onSubmit={(e) => handleSubmit(e, 'cadastro')}>
       <h2>Criar Conta</h2>
+      
+      {formErrors.submit && (
+        <div className="error-message">{formErrors.submit}</div>
+      )}
+      
       <div className="form-group">
         <label>Nome Completo</label>
-        <input type="text" placeholder="Digite seu nome completo" />
+        <input 
+          type="text" 
+          name="fullname"
+          value={formData.fullname}
+          onChange={handleInputChange}
+          placeholder="Digite seu nome completo" 
+        />
+        {formErrors.fullname && <span className="field-error">{formErrors.fullname}</span>}
       </div>
+      
       <div className="form-group">
         <label>Email</label>
-        <input type="email" placeholder="Digite seu email" />
+        <input 
+          type="email" 
+          name="email"
+          value={formData.email}
+          onChange={handleInputChange}
+          placeholder="Digite seu email" 
+        />
+        {formErrors.email && <span className="field-error">{formErrors.email}</span>}
       </div>
+      
       <div className="form-group">
         <label>Senha</label>
-        <input type="password" placeholder="Digite sua senha" />
+        <input 
+          type="password" 
+          name="password"
+          value={formData.password}
+          onChange={handleInputChange}
+          placeholder="Digite sua senha" 
+        />
+        {formErrors.password && <span className="field-error">{formErrors.password}</span>}
       </div>
+      
       <div className="form-group">
         <label>Confirmar Senha</label>
-        <input type="password" placeholder="Confirme sua senha" />
+        <input 
+          type="password" 
+          name="confirmPassword"
+          value={formData.confirmPassword}
+          onChange={handleInputChange}
+          placeholder="Confirme sua senha" 
+        />
+        {formErrors.confirmPassword && <span className="field-error">{formErrors.confirmPassword}</span>}
       </div>
-      <button type="button" className="btn btn-primary btn-lg" onClick={handleLogin}>
-        Criar Conta
+      
+      <button 
+        type="submit" 
+        className="btn btn-primary btn-lg"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? 'Criando...' : 'Criar Conta'}
       </button>
     </form>
-  );
+  )
 
   const renderLogin = () => (
-    <form className="conta-form">
+    <form className="conta-form" onSubmit={(e) => handleSubmit(e, 'login')}>
       <h2>Entrar</h2>
+      
+      {formErrors.submit && (
+        <div className="error-message">{formErrors.submit}</div>
+      )}
+      
       <div className="form-group">
         <label>Email</label>
-        <input type="email" placeholder="Digite seu email" />
+        <input 
+          type="email" 
+          name="email"
+          value={formData.email}
+          onChange={handleInputChange}
+          placeholder="Digite seu email" 
+        />
+        {formErrors.email && <span className="field-error">{formErrors.email}</span>}
       </div>
+      
       <div className="form-group">
         <label>Senha</label>
-        <input type="password" placeholder="Digite sua senha" />
+        <input 
+          type="password" 
+          name="password"
+          value={formData.password}
+          onChange={handleInputChange}
+          placeholder="Digite sua senha" 
+        />
+        {formErrors.password && <span className="field-error">{formErrors.password}</span>}
       </div>
-      <button type="button" className="btn btn-primary btn-lg" onClick={handleLogin}>
-        Entrar
+      
+      <button 
+        type="submit" 
+        className="btn btn-primary btn-lg"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? 'Entrando...' : 'Entrar'}
       </button>
-      <button type="button" className="btn-link" onClick={() => setTelaAtiva('cadastro')}>
+      
+      <button 
+        type="button" 
+        className="btn-link" 
+        onClick={() => setTelaAtiva('cadastro')}
+      >
         Não tem conta? Cadastre-se
       </button>
     </form>
-  );
+  )
 
   const renderDados = () => (
-    <form className="conta-form">
+    <form className="conta-form" onSubmit={(e) => handleSubmit(e, 'dados')}>
       <h2>Meus Dados</h2>
+      
+      {formErrors.submit && (
+        <div className="error-message">{formErrors.submit}</div>
+      )}
+      
       <div className="form-group">
         <label>Nome Completo</label>
-        <input type="text" defaultValue="João Silva" />
+        <input 
+          type="text" 
+          name="fullname"
+          value={formData.fullname}
+          onChange={handleInputChange}
+        />
+        {formErrors.fullname && <span className="field-error">{formErrors.fullname}</span>}
       </div>
+      
       <div className="form-group">
         <label>Email</label>
-        <input type="email" defaultValue="joao@email.com" />
+        <input 
+          type="email" 
+          value={formData.email}
+          disabled
+          className="disabled-field"
+        />
+        <small>Email não pode ser alterado</small>
       </div>
+      
       <div className="form-group">
         <label>Telefone</label>
-        <input type="tel" placeholder="(11) 99999-9999" />
+        <input 
+          type="tel" 
+          name="phone"
+          value={formData.phone}
+          onChange={handleInputChange}
+          placeholder="(11) 99999-9999" 
+        />
+        {formErrors.phone && <span className="field-error">{formErrors.phone}</span>}
       </div>
-      <div className="form-group">
-        <label>CPF</label>
-        <input type="text" placeholder="000.000.000-00" />
-      </div>
-      <button type="button" className="btn btn-primary btn-lg">
-        Salvar Alterações
+      
+      <button 
+        type="submit" 
+        className="btn btn-primary btn-lg"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
       </button>
     </form>
-  );
+  )
 
   const renderLoja = () => (
     <form className="conta-form">
@@ -155,10 +368,10 @@ const PerfilUsuario = () => {
         <label>Categoria</label>
         <select>
           <option>Selecione uma categoria</option>
-          <option>Eletrônicos</option>
-          <option>Roupas</option>
-          <option>Casa e Jardim</option>
-          <option>Esportes</option>
+          <option>Mercearia</option>
+          <option>Açougue</option>
+          <option>Padaria</option>
+          <option>Construção</option>
         </select>
       </div>
       <div className="form-group">
@@ -169,37 +382,51 @@ const PerfilUsuario = () => {
         Criar Loja
       </button>
     </form>
-  );
+  )
 
   const renderConteudo = () => {
+    if (loading) {
+      return <div className="loading-message">Carregando...</div>
+    }
+
+    if (error && error.includes('Credenciais do Supabase')) {
+      return (
+        <div className="error-message">
+          Configure as credenciais do Supabase no arquivo .env para usar a autenticação.
+          <br />
+          <small>Por enquanto, você pode navegar sem login.</small>
+        </div>
+      )
+    }
+
     switch (telaAtiva) {
       case 'cadastro':
-        return renderCadastro();
+        return renderCadastro()
       case 'login':
-        return renderLogin();
+        return renderLogin()
       case 'dados':
-        return renderDados();
+        return renderDados()
       case 'loja':
-        return renderLoja();
+        return renderLoja()
       default:
-        return renderMenu();
+        return renderMenu()
     }
-  };
+  }
 
   const getTitulo = () => {
     switch (telaAtiva) {
       case 'cadastro':
-        return 'Criar Conta';
+        return 'Criar Conta'
       case 'login':
-        return 'Entrar';
+        return 'Entrar'
       case 'dados':
-        return 'Meus Dados';
+        return 'Meus Dados'
       case 'loja':
-        return 'Criar Loja';
+        return 'Criar Loja'
       default:
-        return usuarioLogado ? 'Minha Conta' : 'Conta';
+        return isAuthenticated ? 'Minha Conta' : 'Conta'
     }
-  };
+  }
 
   return (
     <div className="conta-container">
@@ -214,7 +441,7 @@ const PerfilUsuario = () => {
         {renderConteudo()}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default PerfilUsuario;
+export default PerfilUsuario

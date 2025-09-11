@@ -1,3 +1,5 @@
+/* src/pages/Perfil.css - Adições para mensagens de erro e carregamento */
+
 .conta-container {
   min-height: 100vh;
   background-color: var(--neutral-bg);
@@ -104,6 +106,7 @@
 
 .form-group {
   margin-bottom: var(--space-6);
+  position: relative;
 }
 
 .form-group label {
@@ -133,6 +136,20 @@
   border-color: var(--primary);
 }
 
+/* Campo desabilitado */
+.form-group .disabled-field {
+  background-color: var(--neutral-bg);
+  color: var(--neutral-muted);
+  cursor: not-allowed;
+}
+
+.form-group small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--neutral-muted);
+  font-size: 12px;
+}
+
 .form-group textarea {
   resize: vertical;
   min-height: 80px;
@@ -142,6 +159,44 @@
   cursor: pointer;
 }
 
+/* Mensagens de erro */
+.error-message {
+  background-color: #FEE2E2;
+  border: 1px solid #FECACA;
+  color: #B91C1C;
+  padding: var(--space-3) var(--space-4);
+  border-radius: 8px;
+  margin-bottom: var(--space-6);
+  font-size: 14px;
+  text-align: center;
+}
+
+.field-error {
+  display: block;
+  color: var(--error);
+  font-size: 12px;
+  margin-top: var(--space-1);
+  position: absolute;
+  bottom: -18px;
+  left: 0;
+}
+
+/* Campos com erro */
+.form-group input.error,
+.form-group select.error,
+.form-group textarea.error {
+  border-color: var(--error);
+}
+
+/* Mensagem de carregamento */
+.loading-message {
+  text-align: center;
+  padding: var(--space-12);
+  color: var(--neutral-muted);
+  font-size: 18px;
+}
+
+/* Botão link */
 .btn-link {
   background: none;
   border: none;
@@ -163,6 +218,12 @@
 .conta-form .btn {
   width: 100%;
   margin-top: var(--space-4);
+  transition: opacity 0.2s ease;
+}
+
+.conta-form .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Responsividade */

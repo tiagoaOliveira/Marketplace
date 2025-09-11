@@ -1,0 +1,35 @@
+CREATE TABLE products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE product_listings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES products(id),
+    vendor_id UUID NOT NULL REFERENCES users(id), -- assume que vendedores são users
+    price NUMERIC(10,2) NOT NULL,
+    stock INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+==============================================================
+
+CREATE TABLE carts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    status TEXT NOT NULL CHECK (status IN ('active','in_progress','complete')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+
+
+CREATE TABLE cart_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cart_id UUID NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+    product_listing_id UUID NOT NULL REFERENCES product_listings(id),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    price_snapshot NUMERIC(10,2) NOT NULL -- copia o preço do listing no momento da adição
+);
