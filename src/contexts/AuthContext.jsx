@@ -26,71 +26,120 @@ export const AuthProvider = ({ children }) => {
   }
 
   useEffect(() => {
+    let isMounted = true
+
     // Verificar usuário atual no carregamento
     const getInitialUser = async () => {
       try {
-        setLoading(true)
+        console.log('Iniciando verificação de usuário...')
+        
         const user = await auth.getUser()
-        console.log('Initial user check:', user)
+        console.log('Resultado da verificação inicial:', user)
+        
+        if (!isMounted) return
         
         if (user) {
           setUser(user)
-          // Tentar buscar perfil, mas não falhar se não existir
+          console.log('Usuário encontrado, buscando perfil...')
+          
+          // Tentar buscar perfil com timeout
           try {
-            const { data: profile, error: profileError } = await userService.getProfile(user.id)
+            const profilePromise = userService.getProfile(user.id)
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout ao buscar perfil')), 5000)
+            )
+            
+            const { data: profile, error: profileError } = await Promise.race([
+              profilePromise, 
+              timeoutPromise
+            ])
+            
+            if (!isMounted) return
+            
             if (profileError) {
-              console.log('Perfil não encontrado, será criado no primeiro login:', profileError)
-            } else {
+              console.log('Erro ao buscar perfil (normal para novos usuários):', profileError)
+            } else if (profile) {
               setUserProfile(profile)
+              console.log('Perfil carregado:', profile)
             }
           } catch (profileError) {
-            console.log('Erro ao buscar perfil:', profileError)
-            // Usuário existe mas não tem perfil - isso é normal para novos usuários
+            console.log('Erro ou timeout ao buscar perfil:', profileError.message)
+            // Não é um erro crítico - usuário pode existir sem perfil completo
           }
         } else {
+          console.log('Nenhum usuário autenticado encontrado')
           clearUserData()
         }
       } catch (error) {
-        console.error('Erro ao carregar usuário:', error)
-        setError('Erro ao carregar dados do usuário')
-        clearUserData()
+        console.error('Erro ao carregar usuário inicial:', error)
+        if (isMounted) {
+          setError('Erro ao verificar autenticação')
+          clearUserData()
+        }
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          console.log('Finalizando carregamento inicial')
+          setLoading(false)
+        }
       }
     }
+
+    // Timeout geral para garantir que o loading não trave
+    const loadingTimeout = setTimeout(() => {
+      if (isMounted && loading) {
+        console.log('Timeout geral - forçando fim do loading')
+        setLoading(false)
+        clearUserData()
+      }
+    }, 10000) // 10 segundos no máximo
 
     getInitialUser()
 
     // Escutar mudanças de autenticação
     const subscription = auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email)
+        console.log('Mudança de estado de auth:', event, session?.user?.email)
+        
+        if (!isMounted) return
+        
         try {
           if (session?.user) {
+            console.log('Usuário detectado na mudança de auth:', session.user.email)
             setUser(session.user)
-            // Tentar buscar perfil
-            try {
-              const { data: profile, error: profileError } = await userService.getProfile(session.user.id)
-              if (!profileError && profile) {
-                setUserProfile(profile)
-              }
-            } catch (profileError) {
-              console.log('Perfil não encontrado para usuário logado')
-            }
             setError(null)
+            setLoading(false) // Importante: definir loading como false aqui
+            
+            // Tentar buscar perfil sem bloquear a UI
+            setTimeout(async () => {
+              try {
+                const { data: profile, error: profileError } = await userService.getProfile(session.user.id)
+                if (!profileError && profile && isMounted) {
+                  setUserProfile(profile)
+                  console.log('Perfil carregado via auth change:', profile)
+                }
+              } catch (profileError) {
+                console.log('Erro ao buscar perfil na mudança de auth:', profileError)
+              }
+            }, 100)
           } else {
+            console.log('Usuário deslogado')
             clearUserData()
+            setLoading(false)
           }
         } catch (error) {
           console.error('Erro na mudança de auth:', error)
-          clearUserData()
-        } finally {
-          setLoading(false)
+          if (isMounted) {
+            setLoading(false)
+            clearUserData()
+          }
         }
       }
     )
 
     return () => {
+      isMounted = false
+      clearTimeout(loadingTimeout)
+      
       if (subscription && typeof subscription.unsubscribe === 'function') {
         subscription.unsubscribe()
       }
@@ -108,6 +157,7 @@ export const AuthProvider = ({ children }) => {
       
       return { data, error: null }
     } catch (error) {
+      console.error('Erro no signup:', error)
       setError(error.message)
       return { data: null, error: error.message }
     } finally {
@@ -126,6 +176,7 @@ export const AuthProvider = ({ children }) => {
       
       return { data, error: null }
     } catch (error) {
+      console.error('Erro no signin:', error)
       setError(error.message)
       return { data: null, error: error.message }
     } finally {
@@ -141,6 +192,7 @@ export const AuthProvider = ({ children }) => {
       
       clearUserData()
     } catch (error) {
+      console.error('Erro no signout:', error)
       setError(error.message)
     } finally {
       setLoading(false)
@@ -155,9 +207,12 @@ export const AuthProvider = ({ children }) => {
       
       if (error) throw error
       
-      setUserProfile(data[0])
+      if (data && data[0]) {
+        setUserProfile(data[0])
+      }
       return { data, error: null }
     } catch (error) {
+      console.error('Erro ao atualizar perfil:', error)
       setError(error.message)
       return { data: null, error: error.message }
     }

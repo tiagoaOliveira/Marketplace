@@ -389,16 +389,6 @@ const PerfilUsuario = () => {
       return <div className="loading-message">Carregando...</div>
     }
 
-    if (error && error.includes('Credenciais do Supabase')) {
-      return (
-        <div className="error-message">
-          Configure as credenciais do Supabase no arquivo .env para usar a autenticação.
-          <br />
-          <small>Por enquanto, você pode navegar sem login.</small>
-        </div>
-      )
-    }
-
     switch (telaAtiva) {
       case 'cadastro':
         return renderCadastro()
