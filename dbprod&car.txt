@@ -1,35 +1,98 @@
+-- 1. Limpar tudo para evitar conflitos
+DROP TABLE IF EXISTS cart_items CASCADE;
+DROP TABLE IF EXISTS carts CASCADE;
+DROP TABLE IF EXISTS product_listings CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+
+-- 2. Recriar products com SERIAL
 CREATE TABLE products (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
     category TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 3. Recriar product_listings
 CREATE TABLE product_listings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    product_id UUID NOT NULL REFERENCES products(id),
-    vendor_id UUID NOT NULL REFERENCES users(id), -- assume que vendedores são users
+    product_id INT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    vendor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     price NUMERIC(10,2) NOT NULL,
     stock INT NOT NULL DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-==============================================================
-
+-- 4. Recriar carts
 CREATE TABLE carts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     status TEXT NOT NULL CHECK (status IN ('active','in_progress','complete')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     completed_at TIMESTAMPTZ
 );
 
-
+-- 5. Recriar cart_items
 CREATE TABLE cart_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cart_id UUID NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
-    product_listing_id UUID NOT NULL REFERENCES product_listings(id),
+    product_listing_id UUID NOT NULL REFERENCES product_listings(id) ON DELETE CASCADE,
     quantity INT NOT NULL CHECK (quantity > 0),
-    price_snapshot NUMERIC(10,2) NOT NULL -- copia o preço do listing no momento da adição
+    price_snapshot NUMERIC(10,2) NOT NULL
 );
+
+-- 6. Inserir dados de exemplo
+INSERT INTO products (name, description, category) VALUES 
+  ('Smartphone Galaxy Pro', 'Smartphone com 128GB de armazenamento', 'Eletrônicos'),
+  ('Fone Bluetooth Premium', 'Fone sem fio com cancelamento de ruído', 'Eletrônicos'),
+  ('Notebook Gamer', 'Notebook com placa de vídeo dedicada', 'Informática');
+
+-- 7. Criar listings (assumindo que existe pelo menos um usuário)
+INSERT INTO product_listings (product_id, vendor_id, price, stock, is_active)
+SELECT 
+  p.id,
+  (SELECT id FROM users LIMIT 1),
+  CASE 
+    WHEN p.name LIKE '%Smartphone%' THEN 1299.99
+    WHEN p.name LIKE '%Fone%' THEN 249.90
+    WHEN p.name LIKE '%Notebook%' THEN 2499.00
+  END,
+  10,
+  true
+FROM products p;
+
+-- 8. Habilitar RLS
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_listings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE carts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
+
+-- 9. Políticas básicas
+CREATE POLICY "Anyone can view products" ON products FOR SELECT USING (true);
+CREATE POLICY "Anyone can view active listings" ON product_listings FOR SELECT USING (is_active = true);
+
+-- Políticas para carrinho
+CREATE POLICY "Users can view own carts" ON carts FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own carts" ON carts FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own carts" ON carts FOR UPDATE USING (auth.uid() = user_id);
+
+-- Políticas para itens do carrinho
+CREATE POLICY "Users can view own cart items" ON cart_items FOR SELECT USING (
+  EXISTS (SELECT 1 FROM carts WHERE carts.id = cart_items.cart_id AND carts.user_id = auth.uid())
+);
+CREATE POLICY "Users can insert own cart items" ON cart_items FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM carts WHERE carts.id = cart_items.cart_id AND carts.user_id = auth.uid())
+);
+CREATE POLICY "Users can update own cart items" ON cart_items FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM carts WHERE carts.id = cart_items.cart_id AND carts.user_id = auth.uid())
+);
+CREATE POLICY "Users can delete own cart items" ON cart_items FOR DELETE USING (
+  EXISTS (SELECT 1 FROM carts WHERE carts.id = cart_items.cart_id AND carts.user_id = auth.uid())
+);
+
+-- 10. Índices para performance
+CREATE INDEX idx_product_listings_product_id ON product_listings(product_id);
+CREATE INDEX idx_product_listings_vendor_id ON product_listings(vendor_id);
+CREATE INDEX idx_cart_items_cart_id ON cart_items(cart_id);
+CREATE INDEX idx_cart_items_product_listing_id ON cart_items(product_listing_id);

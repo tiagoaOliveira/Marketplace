@@ -1,7 +1,9 @@
 // src/lib/services.js
 import { supabase } from './supabase'
 
+// ========================
 // Serviços de Produtos
+// ========================
 export const productsService = {
   // Listar todos os produtos ativos
   async getProducts() {
@@ -9,12 +11,12 @@ export const productsService = {
       .from('products')
       .select(`
         *,
-        product_listings(
+        product_listings!product_listings_product_id_fkey (
           id,
           price,
           stock,
           vendor_id,
-          users(fullname)
+          users!product_listings_vendor_id_fkey ( fullname )
         )
       `)
       .order('created_at', { ascending: false })
@@ -28,12 +30,12 @@ export const productsService = {
       .from('products')
       .select(`
         *,
-        product_listings(
+        product_listings!product_listings_product_id_fkey (
           id,
           price,
           stock,
           vendor_id,
-          users(fullname)
+          users!product_listings_vendor_id_fkey ( fullname )
         )
       `)
       .eq('id', id)
@@ -53,7 +55,9 @@ export const productsService = {
   }
 }
 
+// ========================
 // Serviços de Listings (produtos de vendedores)
+// ========================
 export const listingsService = {
   // Criar listing
   async createListing(listingData) {
@@ -71,8 +75,8 @@ export const listingsService = {
       .from('product_listings')
       .select(`
         *,
-        products(*),
-        users(fullname)
+        products!product_listings_product_id_fkey (*),
+        users!product_listings_vendor_id_fkey ( fullname )
       `)
       .eq('is_active', true)
       .gt('stock', 0)
@@ -82,7 +86,9 @@ export const listingsService = {
   }
 }
 
+// ========================
 // Serviços de Carrinho
+// ========================
 export const cartService = {
   // Obter carrinho ativo do usuário
   async getActiveCart(userId) {
@@ -90,17 +96,25 @@ export const cartService = {
       .from('carts')
       .select(`
         *,
-        cart_items(
-          *,
-          product_listings(
-            *,
-            products(*)
+        cart_items!cart_items_cart_id_fkey (
+          id,
+          quantity,
+          price_snapshot,
+          product_listings!cart_items_product_listing_id_fkey (
+            id,
+            price,
+            stock,
+            products!product_listings_product_id_fkey (
+              id,
+              name,
+              category
+            )
           )
         )
       `)
       .eq('user_id', userId)
       .eq('status', 'active')
-      .single()
+      .maybeSingle()
     
     return { data, error }
   },
@@ -117,16 +131,14 @@ export const cartService = {
 
   // Adicionar item ao carrinho
   async addToCart(cartId, productListingId, quantity, priceSnapshot) {
-    // Verificar se item já existe no carrinho
     const { data: existingItem } = await supabase
       .from('cart_items')
       .select('*')
       .eq('cart_id', cartId)
       .eq('product_listing_id', productListingId)
-      .single()
+      .maybeSingle()
 
     if (existingItem) {
-      // Atualizar quantidade
       const { data, error } = await supabase
         .from('cart_items')
         .update({ quantity: existingItem.quantity + quantity })
@@ -135,7 +147,6 @@ export const cartService = {
       
       return { data, error }
     } else {
-      // Criar novo item
       const { data, error } = await supabase
         .from('cart_items')
         .insert({

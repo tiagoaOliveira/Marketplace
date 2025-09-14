@@ -84,15 +84,6 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    // Timeout geral para garantir que o loading não trave
-    const loadingTimeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.log('Timeout geral - forçando fim do loading')
-        setLoading(false)
-        clearUserData()
-      }
-    }, 10000) // 10 segundos no máximo
-
     getInitialUser()
 
     // Escutar mudanças de autenticação
@@ -138,7 +129,6 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       isMounted = false
-      clearTimeout(loadingTimeout)
       
       if (subscription && typeof subscription.unsubscribe === 'function') {
         subscription.unsubscribe()
@@ -157,7 +147,6 @@ export const AuthProvider = ({ children }) => {
       
       return { data, error: null }
     } catch (error) {
-      console.error('Erro no signup:', error)
       setError(error.message)
       return { data: null, error: error.message }
     } finally {
@@ -176,7 +165,6 @@ export const AuthProvider = ({ children }) => {
       
       return { data, error: null }
     } catch (error) {
-      console.error('Erro no signin:', error)
       setError(error.message)
       return { data: null, error: error.message }
     } finally {
@@ -192,7 +180,6 @@ export const AuthProvider = ({ children }) => {
       
       clearUserData()
     } catch (error) {
-      console.error('Erro no signout:', error)
       setError(error.message)
     } finally {
       setLoading(false)
@@ -212,7 +199,6 @@ export const AuthProvider = ({ children }) => {
       }
       return { data, error: null }
     } catch (error) {
-      console.error('Erro ao atualizar perfil:', error)
       setError(error.message)
       return { data: null, error: error.message }
     }

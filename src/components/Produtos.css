@@ -6,7 +6,8 @@
   padding: var(--space-12);
   justify-content: center;
   background-color: var(--neutral-bg);
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
 }
 
 .produto-card {
@@ -15,6 +16,7 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   text-align: center;
   width: 280px;
+  padding: var(--space-6);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -28,6 +30,7 @@
   height: 200px;
   object-fit: cover;
   border-radius: 8px;
+  margin-bottom: var(--space-4);
 }
 
 .produto-nome {
@@ -41,24 +44,95 @@
   font-size: 24px;
   font-weight: 700;
   color: var(--primary);
+  margin-bottom: var(--space-4);
+}
+
+/* Controles do carrinho */
+.produto-controles {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.btn-carrinho {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--primary);
+  border-radius: 8px;
+  background-color: var(--white);
+  color: var(--primary);
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-carrinho:hover:not(:disabled) {
+  background-color: var(--primary);
+  color: var(--white);
+}
+
+.btn-carrinho:disabled {
+  border-color: var(--neutral-300);
+  color: var(--neutral-300);
+  cursor: not-allowed;
+}
+
+.quantidade-produto {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--neutral-900);
+  min-width: 30px;
+  text-align: center;
+}
+
+.produto-sem-estoque {
+  color: var(--error);
+  font-size: 14px;
+  margin-top: var(--space-2);
+  font-weight: 500;
 }
 
 /* Responsividade */
+@media (max-width: 1200px) {
+  .produtos-container {
+    justify-content: center;
+  }
+}
+
 @media (max-width: 640px) {
   .produtos-container {
-    flex-wrap: wrap;
     gap: var(--space-4);
-    padding: var(--space-2);
-    justify-content: space-between;
+    padding: var(--space-6);
   }
   
   .produto-card {
     width: calc(50% - var(--space-2));
-    max-width: none;
+    padding: var(--space-4);
   }
   
   .produto-imagem {
     width: 100%;
     height: 150px;
+  }
+  
+  .produto-nome {
+    font-size: 16px;
+  }
+  
+  .produto-preco {
+    font-size: 18px;
+  }
+  
+  .btn-carrinho {
+    width: 35px;
+    height: 35px;
+    font-size: 16px;
+  }
+  
+  .quantidade-produto {
+    font-size: 16px;
   }
 }

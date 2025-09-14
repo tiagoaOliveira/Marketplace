@@ -302,9 +302,7 @@ const PerfilUsuario = () => {
   )
 
   const renderDados = () => (
-    <form className="conta-form" onSubmit={(e) => handleSubmit(e, 'dados')}>
-      <h2>Meus Dados</h2>
-      
+    <form className="conta-form" onSubmit={(e) => handleSubmit(e, 'dados')}>      
       {formErrors.submit && (
         <div className="error-message">{formErrors.submit}</div>
       )}
