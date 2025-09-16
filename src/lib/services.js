@@ -15,8 +15,8 @@ export const productsService = {
           id,
           price,
           stock,
-          vendor_id,
-          users!product_listings_vendor_id_fkey ( fullname )
+          store_id,
+          stores!product_listings_store_id_fkey ( name, is_approved )
         )
       `)
       .order('created_at', { ascending: false })
@@ -34,8 +34,8 @@ export const productsService = {
           id,
           price,
           stock,
-          vendor_id,
-          users!product_listings_vendor_id_fkey ( fullname )
+          store_id,
+          stores!product_listings_store_id_fkey ( name, is_approved )
         )
       `)
       .eq('id', id)
@@ -56,7 +56,7 @@ export const productsService = {
 }
 
 // ========================
-// Serviços de Listings (produtos de vendedores)
+// Serviços de Listings (produtos de lojas)
 // ========================
 export const listingsService = {
   // Criar listing
@@ -69,18 +69,33 @@ export const listingsService = {
     return { data, error }
   },
 
-  // Listar produtos ativos com menor preço
+  // Listar produtos ativos com menor preço (apenas de lojas aprovadas)
   async getActiveListings() {
     const { data, error } = await supabase
       .from('product_listings')
       .select(`
         *,
         products!product_listings_product_id_fkey (*),
-        users!product_listings_vendor_id_fkey ( fullname )
+        stores!product_listings_store_id_fkey ( name, is_approved )
       `)
       .eq('is_active', true)
       .gt('stock', 0)
       .order('price', { ascending: true })
+    
+    return { data, error }
+  },
+
+  // Listar produtos de uma loja específica
+  async getStoreListings(storeId) {
+    const { data, error } = await supabase
+      .from('product_listings')
+      .select(`
+        *,
+        products!product_listings_product_id_fkey (*)
+      `)
+      .eq('store_id', storeId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
     
     return { data, error }
   }
@@ -194,5 +209,106 @@ export const cartService = {
       .eq('cart_id', cartId)
     
     return { data, error }
+  }
+}
+
+// ========================
+// Serviços de Lojas
+// ========================
+export const storesService = {
+  // Buscar lojas do usuário
+  async getUserStores(userId) {
+    const { data, error } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+    
+    return { data, error: error?.message }
+  },
+
+  // Buscar lojas aprovadas
+  async getApprovedStores() {
+    const { data, error } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('is_approved', true)
+      .order('created_at', { ascending: false })
+    
+    return { data, error: error?.message }
+  },
+
+  // Buscar loja por ID
+  async getStoreById(storeId) {
+    const { data, error } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('id', storeId)
+      .single()
+    
+    return { data, error: error?.message }
+  },
+
+  // Criar nova loja
+  async createStore(storeData) {
+    const { data, error } = await supabase
+      .from('stores')
+      .insert([storeData])
+      .select()
+    
+    return { data, error: error?.message }
+  },
+
+  // Atualizar loja
+  async updateStore(storeId, updates) {
+    const { data, error } = await supabase
+      .from('stores')
+      .update(updates)
+      .eq('id', storeId)
+      .select()
+    
+    return { data, error: error?.message }
+  },
+
+  // Deletar loja
+  async deleteStore(storeId) {
+    const { data, error } = await supabase
+      .from('stores')
+      .delete()
+      .eq('id', storeId)
+    
+    return { data, error: error?.message }
+  },
+
+  // Buscar lojas por categoria
+  async getStoresByCategory(category) {
+    const { data, error } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('category', category)
+      .eq('is_approved', true)
+      .order('created_at', { ascending: false })
+    
+    return { data, error: error?.message }
+  },
+
+  // Buscar produtos de uma loja
+  async getStoreProducts(storeId) {
+    const { data, error } = await supabase
+      .from('product_listings')
+      .select(`
+        *,
+        products (
+          id,
+          name,
+          description,
+          category
+        )
+      `)
+      .eq('store_id', storeId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+    
+    return { data, error: error?.message }
   }
 }

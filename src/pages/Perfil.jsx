@@ -1,10 +1,12 @@
 // src/pages/Perfil.jsx
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import './Perfil.css'
 
 const PerfilUsuario = () => {
   const { user, userProfile, signUp, signIn, signOut, updateProfile, loading, error, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const [telaAtiva, setTelaAtiva] = useState('menu')
   const [formData, setFormData] = useState({
     email: '',
@@ -138,12 +140,17 @@ const PerfilUsuario = () => {
     setTelaAtiva('menu')
   }
 
+  const navigateToStores = () => {
+    // Usar navigate do React Router em vez de window.location.href
+    navigate('/loja')
+  }
+
   const renderMenu = () => (
     <div className="conta-menu">
       {!isAuthenticated ? (
         <>
           <div className="conta-opcao" onClick={() => setTelaAtiva('login')}>
-            <span className="opcao-icone">🔑</span>
+            <span className="opcao-icone">🔐</span>
             <div>
               <h3>Entrar</h3>
               <p>Acesse sua conta</p>
@@ -166,11 +173,11 @@ const PerfilUsuario = () => {
               <p>Edite suas informações</p>
             </div>
           </div>
-          <div className="conta-opcao" onClick={() => setTelaAtiva('loja')}>
+          <div className="conta-opcao" onClick={navigateToStores}>
             <span className="opcao-icone">🏪</span>
             <div>
-              <h3>Criar Loja</h3>
-              <p>Venda seus produtos</p>
+              <h3>Minha Loja</h3>
+              <p>Gerenciar lojas e produtos</p>
             </div>
           </div>
           <div className="conta-opcao" onClick={handleLogout}>
@@ -351,37 +358,6 @@ const PerfilUsuario = () => {
     </form>
   )
 
-  const renderLoja = () => (
-    <form className="conta-form">
-      <h2>Criar Loja</h2>
-      <div className="form-group">
-        <label>Nome da Loja</label>
-        <input type="text" placeholder="Digite o nome da sua loja" />
-      </div>
-      <div className="form-group">
-        <label>Descrição</label>
-        <textarea placeholder="Descreva sua loja" rows="3"></textarea>
-      </div>
-      <div className="form-group">
-        <label>Categoria</label>
-        <select>
-          <option>Selecione uma categoria</option>
-          <option>Mercearia</option>
-          <option>Açougue</option>
-          <option>Padaria</option>
-          <option>Construção</option>
-        </select>
-      </div>
-      <div className="form-group">
-        <label>CNPJ</label>
-        <input type="text" placeholder="00.000.000/0001-00" />
-      </div>
-      <button type="button" className="btn btn-primary btn-lg">
-        Criar Loja
-      </button>
-    </form>
-  )
-
   const renderConteudo = () => {
     if (loading) {
       return <div className="loading-message">Carregando...</div>
@@ -394,8 +370,6 @@ const PerfilUsuario = () => {
         return renderLogin()
       case 'dados':
         return renderDados()
-      case 'loja':
-        return renderLoja()
       default:
         return renderMenu()
     }
@@ -409,8 +383,6 @@ const PerfilUsuario = () => {
         return 'Entrar'
       case 'dados':
         return 'Meus Dados'
-      case 'loja':
-        return 'Criar Loja'
       default:
         return isAuthenticated ? 'Minha Conta' : 'Conta'
     }
