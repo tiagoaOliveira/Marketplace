@@ -58,22 +58,8 @@
   margin-bottom: var(--space-8);
 }
 
-.store-form h2 {
-  margin: 0 0 var(--space-8) 0;
-  color: var(--neutral-900);
-  text-align: center;
-}
-
 .form-section {
   margin-bottom: var(--space-8);
-}
-
-.form-section h3 {
-  margin: 0 0 var(--space-6) 0;
-  color: var(--neutral-900);
-  font-size: 18px;
-  border-bottom: 2px solid var(--neutral-bg);
-  padding-bottom: var(--space-2);
 }
 
 .form-group {

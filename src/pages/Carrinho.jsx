@@ -44,7 +44,7 @@ const CarrinhoCompras = () => {
           cartId: cart.id,
           productListingId: item.product_listing_id,
           nome: item.product_listings.products.name,
-          preco: parseFloat(item.price_snapshot),
+          preco: parseFloat(item.product_listings.price),
           quantidade: item.quantity,
           stock: item.product_listings.stock,
           // Usar imagem padrão se não tiver

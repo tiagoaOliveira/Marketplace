@@ -114,7 +114,6 @@ export const cartService = {
         cart_items!cart_items_cart_id_fkey (
           id,
           quantity,
-          price_snapshot,
           product_listings!cart_items_product_listing_id_fkey (
             id,
             price,
@@ -145,7 +144,7 @@ export const cartService = {
   },
 
   // Adicionar item ao carrinho
-  async addToCart(cartId, productListingId, quantity, priceSnapshot) {
+  async addToCart(cartId, productListingId, quantity) {
     const { data: existingItem } = await supabase
       .from('cart_items')
       .select('*')
@@ -167,8 +166,7 @@ export const cartService = {
         .insert({
           cart_id: cartId,
           product_listing_id: productListingId,
-          quantity,
-          price_snapshot: priceSnapshot
+          quantity
         })
         .select()
       
@@ -309,6 +307,69 @@ export const storesService = {
       .eq('is_active', true)
       .order('created_at', { ascending: false })
     
+    return { data, error: error?.message }
+  },
+
+  // ========================
+  // MÉTODOS ADICIONADOS PARA GERENCIAR PRODUCT LISTINGS
+  // ========================
+
+  // Atualizar product listing (preço e estoque)
+  async updateProductListing(listingId, updateData) {
+    const { data, error } = await supabase
+      .from('product_listings')
+      .update({
+        price: updateData.price,
+        stock: updateData.stock
+      })
+      .eq('id', listingId)
+      .select()
+
+    return { data, error: error?.message }
+  },
+
+  // Deletar product listing
+  async deleteProductListing(listingId) {
+    const { data, error } = await supabase
+      .from('product_listings')
+      .delete()
+      .eq('id', listingId)
+
+    return { data, error: error?.message }
+  },
+
+  // Buscar product listing por ID
+  async getProductListing(listingId) {
+    const { data, error } = await supabase
+      .from('product_listings')
+      .select(`
+        *,
+        products (
+          id,
+          name,
+          description,
+          category
+        ),
+        stores (
+          id,
+          name,
+          user_id
+        )
+      `)
+      .eq('id', listingId)
+      .single()
+
+    return { data, error: error?.message }
+  },
+
+  // Ativar/desativar product listing
+  async toggleProductListing(listingId, isActive) {
+    const { data, error } = await supabase
+      .from('product_listings')
+      .update({ is_active: isActive })
+      .eq('id', listingId)
+      .select()
+
     return { data, error: error?.message }
   }
 }

@@ -1,59 +1,87 @@
 import React from 'react';
 import './categorias.css';
 
-const CategoriasShowcase = () => {
+const CategoriasShowcase = ({ onCategoriaSelect, categoriaSelecionada }) => {
   const categorias = [
     {
       id: 1,
       nome: "Mercearia",
-      icone: "📱",
+      icone: "🛒",
     },
     {
       id: 2,
       nome: "Açougue",
-      icone: "🎧",
+      icone: "🥩",
     },
     {
       id: 3,
       nome: "Padaria",
-      icone: "💻",
+      icone: "🍞",
     },
     {
       id: 4,
       nome: "Construção",
-      icone: "🎮",
+      icone: "🔨",
     },
     {
       id: 5,
-      nome: "Papelaria",
-      icone: "🏠",
+      nome: "Mercado",
+      icone: "🏪",
     },
     {
       id: 6,
       nome: "Farmácia",
-      icone: "📷",
+      icone: "💊",
     },
     {
-      id:7,
-      nome:"Moda",
-      icone: "📷",
+      id: 7,
+      nome: "Moda",
+      icone: "👕",
     },
-        {
-      id:8,
-      nome:"Sorveteria",
-      icone: "📷",
+    {
+      id: 8,
+      nome: "Eletrônicos",
+      icone: "📱",
     },
-        {
-      id:9,
-      nome:"Lanches",
-      icone: "📷",
-    }
+    {
+      id: 9,
+      nome: "Móveis",
+      icone: "🪑",
+    },
+    {
+      id: 10,
+      nome: "Lanches",
+      icone: "🍕",
+    },
+    {
+      id: 11,
+      nome: "Brinquedos",
+      icone: "🧸",
+    },
+    {
+      id: 12,
+      nome: "Eletrodomésticos",
+      icone: "🏠",
+    },
   ];
+
+  const handleCategoriaClick = (categoria) => {
+    // Se clicar na categoria já selecionada, remove a seleção
+    if (categoriaSelecionada === categoria.nome) {
+      onCategoriaSelect(null);
+    } else {
+      onCategoriaSelect(categoria.nome);
+    }
+  };
 
   return (
     <div className="categorias-container">
       {categorias.map(categoria => (
-        <div key={categoria.id} className="categoria-card">
+        <div 
+          key={categoria.id} 
+          className={`categoria-card ${categoriaSelecionada === categoria.nome ? 'categoria-selecionada' : ''}`}
+          onClick={() => handleCategoriaClick(categoria)}
+        >
           <div className="categoria-icone">
             {categoria.icone}
           </div>

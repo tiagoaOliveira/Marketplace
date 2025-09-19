@@ -3,8 +3,9 @@ import { listingsService, cartService } from '../lib/services';
 import { auth } from '../lib/supabase';
 import './produtos.css';
 
-const ProdutosShowcase = () => {
+const ProdutosShowcase = ({ categoriaFiltro }) => {
   const [produtos, setProdutos] = useState([]);
+  const [produtosFiltrados, setProdutosFiltrados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [quantidades, setQuantidades] = useState({});
@@ -32,6 +33,11 @@ const ProdutosShowcase = () => {
     initialize();
   }, []);
 
+  // Efeito para filtrar produtos quando a categoria muda
+  useEffect(() => {
+    filtrarProdutos();
+  }, [produtos, categoriaFiltro]);
+
   const carregarProdutos = async () => {
     try {
       const { data, error } = await listingsService.getActiveListings();
@@ -51,15 +57,39 @@ const ProdutosShowcase = () => {
             nome: listing.products.name,
             preco: parseFloat(listing.price),
             stock: listing.stock,
+            categoria: listing.products.category,
+            subcategoria: listing.products.subcategory,
             imagem: `https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&h=300&fit=crop&crop=center`
           };
         }
       });
 
-      setProdutos(Object.values(produtosMap));
+      const produtosArray = Object.values(produtosMap);
+      setProdutos(produtosArray);
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
     }
+  };
+
+  const filtrarProdutos = () => {
+    let produtosFiltrados = [...produtos];
+
+    // Aplicar filtro de categoria se existe
+    if (categoriaFiltro) {
+      produtosFiltrados = produtos.filter(produto => 
+        produto.categoria === categoriaFiltro || 
+        produto.subcategoria === categoriaFiltro
+      );
+    }
+
+    // Se não há filtro, mostrar no máximo 30 produtos aleatórios
+    if (!categoriaFiltro && produtosFiltrados.length > 30) {
+      // Embaralhar array e pegar os primeiros 30
+      const shuffled = [...produtosFiltrados].sort(() => 0.5 - Math.random());
+      produtosFiltrados = shuffled.slice(0, 30);
+    }
+
+    setProdutosFiltrados(produtosFiltrados);
   };
 
   const carregarQuantidadesCarrinho = async (userId) => {
@@ -167,47 +197,64 @@ const ProdutosShowcase = () => {
     );
   }
 
-  return (
-    <div className="produtos-container">
-      {produtos.map(produto => (
-        <div key={produto.id} className="produto-card">
-          <img 
-            src={produto.imagem} 
-            alt={produto.nome}
-            className="produto-imagem"
-          />
-          <h3 className="produto-nome">{produto.nome}</h3>
-          <p className="produto-preco">
-            R$ {produto.preco.toFixed(2).replace('.', ',')}
+  if (produtosFiltrados.length === 0) {
+    return (
+      <div className="produtos-container">
+        <div className="produtos-vazio">
+          <p>
+            {categoriaFiltro 
+              ? `Nenhum produto encontrado na categoria "${categoriaFiltro}"` 
+              : 'Nenhum produto disponível'
+            }
           </p>
-          
-          <div className="produto-controles">
-            <button 
-              className="btn-carrinho btn-menos"
-              onClick={() => removerDoCarrinho(produto)}
-              disabled={!quantidades[produto.id] || quantidades[produto.id] === 0}
-            >
-              -
-            </button>
-            
-            <span className="quantidade-produto">
-              {quantidades[produto.id] || 0}
-            </span>
-            
-            <button 
-              className="btn-carrinho btn-mais"
-              onClick={() => adicionarAoCarrinho(produto)}
-              disabled={produto.stock === 0 || (quantidades[produto.id] >= produto.stock)}
-            >
-              +
-            </button>
-          </div>
-
-          {produto.stock === 0 && (
-            <p className="produto-sem-estoque">Sem estoque</p>
-          )}
         </div>
-      ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="produtos-container">      
+      <div className="produtos-grid">
+        {produtosFiltrados.map(produto => (
+          <div key={produto.id} className="produto-card">
+            <img 
+              src={produto.imagem} 
+              alt={produto.nome}
+              className="produto-imagem"
+            />
+            <h3 className="produto-nome">{produto.nome}</h3>
+            <p className="produto-preco">
+              R$ {produto.preco.toFixed(2).replace('.', ',')}
+            </p>
+            
+            <div className="produto-controles">
+              <button 
+                className="btn-carrinho btn-menos"
+                onClick={() => removerDoCarrinho(produto)}
+                disabled={!quantidades[produto.id] || quantidades[produto.id] === 0}
+              >
+                -
+              </button>
+              
+              <span className="quantidade-produto">
+                {quantidades[produto.id] || 0}
+              </span>
+              
+              <button 
+                className="btn-carrinho btn-mais"
+                onClick={() => adicionarAoCarrinho(produto)}
+                disabled={produto.stock === 0 || (quantidades[produto.id] >= produto.stock)}
+              >
+                +
+              </button>
+            </div>
+
+            {produto.stock === 0 && (
+              <p className="produto-sem-estoque">Sem estoque</p>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

@@ -401,16 +401,12 @@ const Stores = () => {
       </div>
 
       {editingStore && (
-        <form className="store-form" onSubmit={handleSubmit}>
-          <h2>Editar Loja</h2>
-          
+        <form className="store-form" onSubmit={handleSubmit}>          
           {formErrors.submit && (
             <div className="error-message">{formErrors.submit}</div>
           )}
 
-          <div className="form-section">
-            <h3>Informações Básicas</h3>
-            
+          <div className="form-section">            
             <div className="form-group">
               <label>Nome da Loja *</label>
               <input
