@@ -1,21 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { storesService } from '../lib/services';
+import { storesService, productsService } from '../lib/services';
 import { LiaEdit } from "react-icons/lia";
 import './Loja.css';
 
 const Stores = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  
+  // Store states
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingStore, setEditingStore] = useState(null);
+  const [creatingStore, setCreatingStore] = useState(false);
+  
+  // Store products states
   const [expandedProducts, setExpandedProducts] = useState(null);
   const [storeProducts, setStoreProducts] = useState({});
   const [loadingProducts, setLoadingProducts] = useState({});
   
-  // Product editing state
+  // Product editing states
   const [editingProduct, setEditingProduct] = useState(null);
   const [productFormData, setProductFormData] = useState({
     price: '',
@@ -23,6 +28,18 @@ const Stores = () => {
   });
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
 
+  // Product catalog states
+  const [expandedCatalog, setExpandedCatalog] = useState(null);
+  const [availableProducts, setAvailableProducts] = useState([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [addingProduct, setAddingProduct] = useState(null);
+  const [addProductForm, setAddProductForm] = useState({
+    price: '',
+    stock: ''
+  });
+  const [isSubmittingAdd, setIsSubmittingAdd] = useState(false);
+
+  // Form states
   const [formData, setFormData] = useState({
     name: '',
     business_name: '',
@@ -64,7 +81,6 @@ const Stores = () => {
     }
   }, [isAuthenticated, user]);
 
-  // Carregar produtos de todas as lojas quando as lojas são carregadas
   useEffect(() => {
     if (stores.length > 0) {
       stores.forEach(store => {
@@ -74,7 +90,7 @@ const Stores = () => {
   }, [stores]);
 
   const handleVoltar = () => {
-    if (editingStore) {
+    if (editingStore || creatingStore) {
       resetForm();
     } else {
       window.history.back();
@@ -98,7 +114,7 @@ const Stores = () => {
 
   const loadStoreProducts = async (storeId) => {
     if (storeProducts[storeId]) {
-      return; // Já carregou os produtos desta loja
+      return;
     }
 
     setLoadingProducts(prev => ({ ...prev, [storeId]: true }));
@@ -110,7 +126,6 @@ const Stores = () => {
         return;
       }
       
-      // Limitar a 10 produtos
       const limitedProducts = (data || []).slice(0, 10);
       setStoreProducts(prev => ({
         ...prev,
@@ -123,13 +138,43 @@ const Stores = () => {
     }
   };
 
-  // Função corrigida: alterna a exibição dos produtos e carrega quando necessário
+  const loadAvailableProducts = async () => {
+    if (availableProducts.length > 0) {
+      return;
+    }
+
+    setLoadingCatalog(true);
+    
+    try {
+      const { data, error } = await productsService.getProducts();
+      if (error) {
+        console.error('Erro ao carregar produtos:', error);
+        return;
+      }
+      
+      setAvailableProducts(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar produtos:', error);
+    } finally {
+      setLoadingCatalog(false);
+    }
+  };
+
   const handleToggleProducts = async (store) => {
     if (expandedProducts === store.id) {
       setExpandedProducts(null);
     } else {
       setExpandedProducts(store.id);
       await loadStoreProducts(store.id);
+    }
+  };
+
+  const handleToggleCatalog = async (store) => {
+    if (expandedCatalog === store.id) {
+      setExpandedCatalog(null);
+    } else {
+      setExpandedCatalog(store.id);
+      await loadAvailableProducts();
     }
   };
 
@@ -152,7 +197,6 @@ const Stores = () => {
       }));
     }
 
-    // Limpar erro do campo
     if (formErrors[name]) {
       setFormErrors(prev => ({
         ...prev,
@@ -198,17 +242,19 @@ const Stores = () => {
         address: formData.address.street ? formData.address : null
       };
 
-      const result = await storesService.updateStore(editingStore.id, storeData);
+      let result;
+      if (editingStore) {
+        result = await storesService.updateStore(editingStore.id, storeData);
+      } else {
+        result = await storesService.createStore(storeData);
+      }
 
       if (result.error) {
         setFormErrors({ submit: result.error });
         return;
       }
 
-      // Recarregar lojas
       await loadUserStores();
-      
-      // Resetar formulário
       resetForm();
       
     } catch (error) {
@@ -241,6 +287,28 @@ const Stores = () => {
     });
   };
 
+  const handleCreateNew = () => {
+    setCreatingStore(true);
+    setFormData({
+      name: '',
+      business_name: '',
+      description: '',
+      category: '',
+      cnpj: '',
+      email: '',
+      phone: '',
+      address: {
+        street: '',
+        number: '',
+        complement: '',
+        neighborhood: '',
+        city: '',
+        state: '',
+        zip_code: ''
+      }
+    });
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -262,9 +330,9 @@ const Stores = () => {
     });
     setFormErrors({});
     setEditingStore(null);
+    setCreatingStore(false);
   };
 
-  // Product editing functions
   const handleEditProduct = (product) => {
     setEditingProduct(product);
     setProductFormData({
@@ -294,7 +362,6 @@ const Stores = () => {
         stock: parseInt(productFormData.stock) || 0
       };
 
-      // Call the update service
       const { error } = await storesService.updateProductListing(editingProduct.id, updateData);
 
       if (error) {
@@ -302,7 +369,6 @@ const Stores = () => {
         return;
       }
 
-      // Update local state
       const storeId = editingProduct.store_id || 
         Object.keys(storeProducts).find(id => 
           storeProducts[id].some(p => p.id === editingProduct.id)
@@ -319,7 +385,6 @@ const Stores = () => {
         }));
       }
 
-      // Close modal
       setEditingProduct(null);
       setProductFormData({ price: '', stock: '' });
 
@@ -343,7 +408,6 @@ const Stores = () => {
         return;
       }
 
-      // Update local state
       const storeId = product.store_id || 
         Object.keys(storeProducts).find(id => 
           storeProducts[id].some(p => p.id === product.id)
@@ -358,6 +422,65 @@ const Stores = () => {
 
     } catch (error) {
       console.error('Erro ao excluir produto:', error);
+    }
+  };
+
+  const handleAddProduct = (product, store) => {
+    setAddingProduct({ product, store });
+    setAddProductForm({
+      price: '',
+      stock: ''
+    });
+  };
+
+  const handleAddProductInputChange = (e) => {
+    const { name, value } = e.target;
+    setAddProductForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmitAddProduct = async (e) => {
+    e.preventDefault();
+    
+    if (!addingProduct) return;
+
+    setIsSubmittingAdd(true);
+
+    try {
+      const listingData = {
+        product_id: addingProduct.product.id,
+        store_id: addingProduct.store.id,
+        price: parseFloat(addProductForm.price) || 0,
+        stock: parseInt(addProductForm.stock) || 0,
+        is_active: true
+      };
+
+      const { data, error } = await storesService.createProductListing(listingData);
+
+      if (error) {
+        console.error('Erro ao adicionar produto:', error);
+        return;
+      }
+
+      const newListing = {
+        ...data[0],
+        products: addingProduct.product
+      };
+
+      setStoreProducts(prev => ({
+        ...prev,
+        [addingProduct.store.id]: [...(prev[addingProduct.store.id] || []), newListing]
+      }));
+
+      setAddingProduct(null);
+      setAddProductForm({ price: '', stock: '' });
+
+    } catch (error) {
+      console.error('Erro ao adicionar produto:', error);
+    } finally {
+      setIsSubmittingAdd(false);
     }
   };
 
@@ -397,10 +520,14 @@ const Stores = () => {
         <button className="btn-voltar" onClick={handleVoltar}>
           ←
         </button>
-        <h1>{editingStore ? 'Editar Loja' : 'Minha Loja'}</h1>
+        <h1>
+          {editingStore ? 'Editar Loja' : 
+           creatingStore ? 'Nova Loja' : 
+           'Minha Loja'}
+        </h1>
       </div>
 
-      {editingStore && (
+      {(editingStore || creatingStore) && (
         <form className="store-form" onSubmit={handleSubmit}>          
           {formErrors.submit && (
             <div className="error-message">{formErrors.submit}</div>
@@ -595,7 +722,7 @@ const Stores = () => {
               className="btn btn-primary"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Salvando...' : 'Atualizar'}
+              {isSubmitting ? 'Salvando...' : (editingStore ? 'Atualizar' : 'Criar Loja')}
             </button>
           </div>
         </form>
@@ -673,130 +800,280 @@ const Stores = () => {
         </div>
       )}
 
-      {!editingStore && (
+      {/* Add Product Modal */}
+      {addingProduct && (
+        <div className="modal-overlay" onClick={() => setAddingProduct(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Adicionar Produto</h3>
+              <button
+                className="modal-close"
+                onClick={() => setAddingProduct(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form className="modal-form" onSubmit={handleSubmitAddProduct}>
+              <div className="form-group">
+                <label>Produto</label>
+                <input
+                  type="text"
+                  value={addingProduct.product.name || 'Produto sem nome'}
+                  disabled
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Categoria</label>
+                <input
+                  type="text"
+                  value={addingProduct.product.category || ''}
+                  disabled
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Preço (R$)</label>
+                <input
+                  type="number"
+                  name="price"
+                  step="0.01"
+                  min="0"
+                  value={addProductForm.price}
+                  onChange={handleAddProductInputChange}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Estoque</label>
+                <input
+                  type="number"
+                  name="stock"
+                  min="0"
+                  value={addProductForm.stock}
+                  onChange={handleAddProductInputChange}
+                  placeholder="0"
+                  required
+                />
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setAddingProduct(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isSubmittingAdd}
+                >
+                  {isSubmittingAdd ? 'Adicionando...' : 'Adicionar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {!editingStore && !creatingStore && (
         <div className="stores-list">
           {stores.length === 0 ? (
             <div className="empty-state">
-              <p>Você ainda não tem lojas criadas.</p>
+              <h3>Você ainda não tem lojas criadas</h3>
+              <p>Crie sua primeira loja para começar a vender seus produtos</p>
+              <button 
+                className="btn btn-primary"
+                onClick={handleCreateNew}
+              >
+                Criar Nova Loja
+              </button>
             </div>
           ) : (
-            stores.map(store => (
-              <React.Fragment key={store.id}>
-                <div className="store-card">
-                  <div className="store-card-header">
-                    <div className="store-info">
-                      <div className="store-details">
-                        <h3>{store.name}</h3>
-                        {store.business_name && (
-                          <p className="business-name">{store.business_name}</p>
+              
+              stores.map(store => (
+                <React.Fragment key={store.id}>
+                  <div className="store-card">
+                    <div className="store-card-header">
+                      <div className="store-info">
+                        <div className="store-details">
+                          <h3>{store.name}</h3>
+                          {store.business_name && (
+                            <p className="business-name">{store.business_name}</p>
+                          )}
+                          <p className="category">{store.category}</p>
+                          
+                          <div className="store-status">
+                            {store.is_approved ? (
+                              <span className="status approved">✓ Aprovada</span>
+                            ) : (
+                              <span className="status pending">⏳ Aguardando aprovação</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="store-card-controls">
+                          <button
+                            className="btn btn-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(store);
+                            }}
+                          >
+                            <LiaEdit size={28} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="store-products-container">
+                    <div 
+                      className="store-products-header"
+                      onClick={() => handleToggleProducts(store)}
+                    >
+                      <h3 className="store-products-title">
+                        Produtos - {store.name}
+                      </h3>
+                      <button
+                        className={`products-expand-btn ${expandedProducts === store.id ? 'expanded' : ''}`}
+                        type="button"
+                      >
+                        ▼
+                      </button>
+                    </div>
+
+                    {expandedProducts === store.id && (
+                      <div className="store-products-content">
+                        {store.description && (
+                          <div className="store-description">
+                            <p>{store.description}</p>
+                          </div>
                         )}
-                        <p className="category">{store.category}</p>
-                        
-                        <div className="store-status">
-                          {store.is_approved ? (
-                            <span className="status approved">✓ Aprovada</span>
+
+                        {(store.email || store.phone) && (
+                          <div className="store-contact">
+                            {store.email && <span>📧 {store.email}</span>}
+                            {store.phone && <span>📞 {store.phone}</span>}
+                          </div>
+                        )}
+
+                        <div className="store-products">
+                          {loadingProducts[store.id] ? (
+                            <p className="loading-products">Carregando produtos...</p>
+                          ) : storeProducts[store.id]?.length > 0 ? (
+                            <div className="products-list">
+                              {storeProducts[store.id].map(listing => {
+                                const productName = listing.products?.name || listing.product?.name || listing.name || 'Produto sem nome';
+                                const productCategory = listing.products?.category || listing.product?.category || '';
+                                const productDescription = listing.products?.description || listing.product?.description || '';
+                                const priceFormatted = (typeof listing.price === 'number') ? listing.price.toFixed(2) : '—';
+                                return (
+                                  <div key={listing.id} className="product-item">
+                                    <div className="product-info">
+                                      <h5>{productName}</h5>
+                                      {productCategory && <p className="product-category">{productCategory}</p>}
+                                      {productDescription && (
+                                        <p className="product-description">{productDescription}</p>
+                                      )}
+                                    </div>
+                                                                          <div className="product-details">
+                                      <span className="product-price">R$ {priceFormatted}</span>
+                                      <span className="product-stock">Estoque: {listing.stock ?? '—'}</span>
+                                      <div className="product-actions">
+                                        <button
+                                          className="btn-edit-product"
+                                          onClick={() => handleEditProduct(listing)}
+                                        >
+                                          Editar
+                                        </button>
+                                        <button
+                                          className="btn-delete-product"
+                                          onClick={() => handleDeleteProduct(listing)}
+                                        >
+                                          Excluir
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           ) : (
-                            <span className="status pending">⏳ Aguardando aprovação</span>
+                            <p className="no-products">Nenhum produto cadastrado nesta loja.</p>
                           )}
                         </div>
                       </div>
-
-                      <div className="store-card-controls">
-                        <button
-                          className="btn btn-sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(store);
-                          }}
-                        >
-                          <LiaEdit size={28} />
-                        </button>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                </div>
 
-                <div className="store-products-container">
-                  <div 
-                    className="store-products-header"
-                    onClick={() => handleToggleProducts(store)}
-                  >
-                    <h3 className="store-products-title">
-                      Produtos - {store.name}
-                    </h3>
-                    <button
-                      className={`products-expand-btn ${expandedProducts === store.id ? 'expanded' : ''}`}
-                      type="button"
+                  <div className="store-products-container">
+                    <div 
+                      className="store-products-header catalog-header"
+                      onClick={() => handleToggleCatalog(store)}
                     >
-                      ▼
-                    </button>
-                  </div>
+                      <h3 className="store-products-title">
+                        Adicionar Produtos
+                      </h3>
+                      <button
+                        className={`products-expand-btn ${expandedCatalog === store.id ? 'expanded' : ''}`}
+                        type="button"
+                      >
+                        ▼
+                      </button>
+                    </div>
 
-                  {expandedProducts === store.id && (
-                    <div className="store-products-content">
-                      {store.description && (
-                        <div className="store-description">
-                          <p>{store.description}</p>
-                        </div>
-                      )}
-
-                      {(store.email || store.phone) && (
-                        <div className="store-contact">
-                          {store.email && <span>📧 {store.email}</span>}
-                          {store.phone && <span>📞 {store.phone}</span>}
-                        </div>
-                      )}
-
-                      <div className="store-products">
-                        {loadingProducts[store.id] ? (
-                          <p className="loading-products">Carregando produtos...</p>
-                        ) : storeProducts[store.id]?.length > 0 ? (
-                          <div className="products-list">
-                            {storeProducts[store.id].map(listing => {
-                              const productName = listing.products?.name || listing.product?.name || listing.name || 'Produto sem nome';
-                              const productCategory = listing.products?.category || listing.product?.category || '';
-                              const productDescription = listing.products?.description || listing.product?.description || '';
-                              const priceFormatted = (typeof listing.price === 'number') ? listing.price.toFixed(2) : '—';
-                              return (
-                                <div key={listing.id} className="product-item">
-                                  <div className="product-info">
-                                    <h5>{productName}</h5>
-                                    {productCategory && <p className="product-category">{productCategory}</p>}
-                                    {productDescription && (
-                                      <p className="product-description">{productDescription}</p>
-                                    )}
-                                  </div>
-                                  <div className="product-details">
-                                    <span className="product-price">R$ {priceFormatted}</span>
-                                    <span className="product-stock">Estoque: {listing.stock ?? '—'}</span>
-                                    <div className="product-actions">
-                                      <button
-                                        className="btn-edit-product"
-                                        onClick={() => handleEditProduct(listing)}
-                                      >
-                                        Editar
-                                      </button>
-                                      <button
-                                        className="btn-delete-product"
-                                        onClick={() => handleDeleteProduct(listing)}
-                                      >
-                                        Excluir
-                                      </button>
+                    {expandedCatalog === store.id && (
+                      <div className="store-products-content">
+                        <div className="store-products">
+                          {loadingCatalog ? (
+                            <p className="loading-products">Carregando catálogo...</p>
+                          ) : availableProducts.length > 0 ? (
+                            <div className="products-list">
+                              {availableProducts.map(product => {
+                                const alreadyAdded = storeProducts[store.id]?.some(
+                                  listing => listing.products?.id === product.id || listing.product_id === product.id
+                                );
+                                
+                                return (
+                                  <div key={product.id} className="product-item">
+                                    <div className="product-info">
+                                      <h5>{product.name}</h5>
+                                      {product.category && <p className="product-category">{product.category}</p>}
+                                      {product.description && (
+                                        <p className="product-description">{product.description}</p>
+                                      )}
+                                    </div>
+                                    <div className="product-details">
+                                      {alreadyAdded ? (
+                                        <span className="product-status">Já adicionado</span>
+                                      ) : (
+                                        <button
+                                          className="btn-add-product"
+                                          onClick={() => handleAddProduct(product, store)}
+                                        >
+                                          + Adicionar
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <p className="no-products">Nenhum produto cadastrado nesta loja.</p>
-                        )}
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="no-products">Nenhum produto disponível no catálogo.</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              </React.Fragment>
-            ))
+                    )}
+                  </div>
+                </React.Fragment>
+              ))
           )}
         </div>
       )}

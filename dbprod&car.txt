@@ -12,7 +12,6 @@ CREATE TABLE products (
 CREATE TABLE product_listings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id INT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    vendor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     price NUMERIC(10,2) NOT NULL,
     stock INT NOT NULL DEFAULT 0,
     is_active BOOLEAN DEFAULT true,
@@ -44,7 +43,7 @@ INSERT INTO products (name, description, category) VALUES
   ('Notebook Gamer', 'Notebook com placa de vídeo dedicada', 'Informática');
 
 -- 7. Criar listings (assumindo que existe pelo menos um usuário)
-INSERT INTO product_listings (product_id, vendor_id, price, stock, is_active)
+INSERT INTO product_listings (product_id, price, stock, is_active)
 SELECT 
   p.id,
   (SELECT id FROM users LIMIT 1),
@@ -88,6 +87,5 @@ CREATE POLICY "Users can delete own cart items" ON cart_items FOR DELETE USING (
 
 -- 10. Índices para performance
 CREATE INDEX idx_product_listings_product_id ON product_listings(product_id);
-CREATE INDEX idx_product_listings_vendor_id ON product_listings(vendor_id);
 CREATE INDEX idx_cart_items_cart_id ON cart_items(cart_id);
 CREATE INDEX idx_cart_items_product_listing_id ON cart_items(product_listing_id);

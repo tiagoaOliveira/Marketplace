@@ -310,10 +310,6 @@ export const storesService = {
     return { data, error: error?.message }
   },
 
-  // ========================
-  // MÉTODOS ADICIONADOS PARA GERENCIAR PRODUCT LISTINGS
-  // ========================
-
   // Atualizar product listing (preço e estoque)
   async updateProductListing(listingId, updateData) {
     const { data, error } = await supabase
@@ -369,6 +365,36 @@ export const storesService = {
       .update({ is_active: isActive })
       .eq('id', listingId)
       .select()
+
+    return { data, error: error?.message }
+  },
+
+  // Criar product listing
+  async createProductListing(listingData) {
+    console.log('Dados sendo enviados:', listingData);
+    
+    const { data, error } = await supabase
+      .from('product_listings')
+      .insert([{
+        product_id: listingData.product_id,
+        store_id: listingData.store_id,
+        price: listingData.price,
+        stock: listingData.stock,
+        is_active: listingData.is_active ?? true
+      }])
+      .select(`
+        *,
+        products (
+          id,
+          name,
+          description,
+          category
+        )
+      `)
+
+    if (error) {
+      console.error('Erro detalhado do Supabase:', error);
+    }
 
     return { data, error: error?.message }
   }
