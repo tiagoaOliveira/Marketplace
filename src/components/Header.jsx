@@ -46,7 +46,7 @@ function Header() {
         </div>
       </div>
 
-      <Carrossel />      
+      <Carrossel />    
       <Categorias 
         onCategoriaSelect={handleCategoriaSelect}
         categoriaSelecionada={categoriaSelecionada}

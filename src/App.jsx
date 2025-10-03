@@ -5,6 +5,7 @@ import Header from './components/Header'
 import Carrinho from './pages/Carrinho'
 import Perfil from './pages/Perfil'
 import Loja from './pages/Loja'
+import PerfilLoja from './pages/PerfilLoja';
 import './styles/reset.css'
 import './styles/global.css'
 
@@ -18,6 +19,7 @@ function App() {
           <Route path="/carrinho" element={<Carrinho />} />
           <Route path="/perfil" element={<Perfil />} />
           <Route path="/loja" element={<Loja />} />
+          <Route  path='/loja/:storeSlug' element={<PerfilLoja/>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

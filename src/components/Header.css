@@ -1,10 +1,9 @@
 .header {
   width: 100%;
-  background-color: var(--white);
+  background-color: var(--neutral-bg);
   border-bottom: 1px solid #E5E7EB;
   position: sticky;
   top: 0;
-
 }
 
 .header-container {

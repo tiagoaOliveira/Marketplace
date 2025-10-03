@@ -20,7 +20,7 @@ export const productsService = {
         )
       `)
       .order('created_at', { ascending: false })
-    
+
     return { data, error }
   },
 
@@ -40,7 +40,7 @@ export const productsService = {
       `)
       .eq('id', id)
       .single()
-    
+
     return { data, error }
   },
 
@@ -50,7 +50,7 @@ export const productsService = {
       .from('products')
       .insert(productData)
       .select()
-    
+
     return { data, error }
   }
 }
@@ -65,7 +65,7 @@ export const listingsService = {
       .from('product_listings')
       .insert(listingData)
       .select()
-    
+
     return { data, error }
   },
 
@@ -81,7 +81,7 @@ export const listingsService = {
       .eq('is_active', true)
       .gt('stock', 0)
       .order('price', { ascending: true })
-    
+
     return { data, error }
   },
 
@@ -96,7 +96,7 @@ export const listingsService = {
       .eq('store_id', storeId)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
-    
+
     return { data, error }
   }
 }
@@ -129,7 +129,7 @@ export const cartService = {
       .eq('user_id', userId)
       .eq('status', 'active')
       .maybeSingle()
-    
+
     return { data, error }
   },
 
@@ -139,7 +139,7 @@ export const cartService = {
       .from('carts')
       .insert({ user_id: userId, status: 'active' })
       .select()
-    
+
     return { data, error }
   },
 
@@ -158,7 +158,7 @@ export const cartService = {
         .update({ quantity: existingItem.quantity + quantity })
         .eq('id', existingItem.id)
         .select()
-      
+
       return { data, error }
     } else {
       const { data, error } = await supabase
@@ -169,7 +169,7 @@ export const cartService = {
           quantity
         })
         .select()
-      
+
       return { data, error }
     }
   },
@@ -185,7 +185,7 @@ export const cartService = {
       .update({ quantity })
       .eq('id', itemId)
       .select()
-    
+
     return { data, error }
   },
 
@@ -195,7 +195,7 @@ export const cartService = {
       .from('cart_items')
       .delete()
       .eq('id', itemId)
-    
+
     return { data, error }
   },
 
@@ -205,7 +205,7 @@ export const cartService = {
       .from('cart_items')
       .delete()
       .eq('cart_id', cartId)
-    
+
     return { data, error }
   }
 }
@@ -221,7 +221,7 @@ export const storesService = {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-    
+
     return { data, error: error?.message }
   },
 
@@ -232,7 +232,7 @@ export const storesService = {
       .select('*')
       .eq('is_approved', true)
       .order('created_at', { ascending: false })
-    
+
     return { data, error: error?.message }
   },
 
@@ -243,8 +243,30 @@ export const storesService = {
       .select('*')
       .eq('id', storeId)
       .single()
-    
+
     return { data, error: error?.message }
+  },
+
+  // Buscar loja por slug
+  async getStoreBySlug(slug) {
+    const { data: stores, error } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('is_approved', true)
+
+    if (error) return { data: null, error: error?.message }
+
+    const store = stores?.find(s => {
+      const storeSlug = s.name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+      return storeSlug === slug
+    })
+
+    return { data: store || null, error: store ? null : 'Loja não encontrada' }
   },
 
   // Criar nova loja
@@ -253,7 +275,7 @@ export const storesService = {
       .from('stores')
       .insert([storeData])
       .select()
-    
+
     return { data, error: error?.message }
   },
 
@@ -264,7 +286,7 @@ export const storesService = {
       .update(updates)
       .eq('id', storeId)
       .select()
-    
+
     return { data, error: error?.message }
   },
 
@@ -274,7 +296,7 @@ export const storesService = {
       .from('stores')
       .delete()
       .eq('id', storeId)
-    
+
     return { data, error: error?.message }
   },
 
@@ -286,7 +308,7 @@ export const storesService = {
       .eq('category', category)
       .eq('is_approved', true)
       .order('created_at', { ascending: false })
-    
+
     return { data, error: error?.message }
   },
 
@@ -306,7 +328,7 @@ export const storesService = {
       .eq('store_id', storeId)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
-    
+
     return { data, error: error?.message }
   },
 
@@ -372,7 +394,7 @@ export const storesService = {
   // Criar product listing
   async createProductListing(listingData) {
     console.log('Dados sendo enviados:', listingData);
-    
+
     const { data, error } = await supabase
       .from('product_listings')
       .insert([{

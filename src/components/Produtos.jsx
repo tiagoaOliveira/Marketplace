@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { listingsService, cartService } from '../lib/services';
 import { auth } from '../lib/supabase';
 import './produtos.css';
 
 const ProdutosShowcase = ({ categoriaFiltro }) => {
+  const navigate = useNavigate();
   const [produtos, setProdutos] = useState([]);
   const [produtosFiltrados, setProdutosFiltrados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [quantidades, setQuantidades] = useState({});
+  const [modalAberto, setModalAberto] = useState(false);
+  const [produtoSelecionado, setProdutoSelecionado] = useState(null);
 
   useEffect(() => {
     const initialize = async () => {
       try {
-        // Carregar usuário
         const currentUser = await auth.getUser();
         setUser(currentUser);
 
-        // Carregar produtos
         await carregarProdutos();
         
         if (currentUser) {
@@ -33,7 +35,6 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
     initialize();
   }, []);
 
-  // Efeito para filtrar produtos quando a categoria muda
   useEffect(() => {
     filtrarProdutos();
   }, [produtos, categoriaFiltro]);
@@ -46,19 +47,20 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
         return;
       }
 
-      // Agrupar por produto (pegar menor preço)
       const produtosMap = {};
       data.forEach(listing => {
         const productId = listing.products.id;
         if (!produtosMap[productId] || listing.price < produtosMap[productId].price) {
           produtosMap[productId] = {
-            id: listing.id, // ID do listing
+            id: listing.id,
             productId: productId,
             nome: listing.products.name,
+            descricao: listing.products.description,
             preco: parseFloat(listing.price),
             stock: listing.stock,
             categoria: listing.products.category,
             subcategoria: listing.products.subcategory,
+            loja: listing.stores.name,
             imagem: `https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&h=300&fit=crop&crop=center`
           };
         }
@@ -74,7 +76,6 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
   const filtrarProdutos = () => {
     let produtosFiltrados = [...produtos];
 
-    // Aplicar filtro de categoria se existe
     if (categoriaFiltro) {
       produtosFiltrados = produtos.filter(produto => 
         produto.categoria === categoriaFiltro || 
@@ -82,9 +83,7 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
       );
     }
 
-    // Se não há filtro, mostrar no máximo 30 produtos aleatórios
     if (!categoriaFiltro && produtosFiltrados.length > 30) {
-      // Embaralhar array e pegar os primeiros 30
       const shuffled = [...produtosFiltrados].sort(() => 0.5 - Math.random());
       produtosFiltrados = shuffled.slice(0, 30);
     }
@@ -117,11 +116,9 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
     }
 
     try {
-      // Verificar se existe carrinho ativo
       let { data: cart, error } = await cartService.getActiveCart(user.id);
       
       if (error || !cart) {
-        // Criar novo carrinho se não existir
         const { data: newCart, error: createError } = await cartService.createCart(user.id);
         if (createError) {
           console.error('Erro ao criar carrinho:', createError);
@@ -130,7 +127,6 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
         cart = newCart[0];
       }
 
-      // Adicionar item ao carrinho
       const { error: addError } = await cartService.addToCart(
         cart.id,
         listing.id,
@@ -143,7 +139,6 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
         return;
       }
 
-      // Atualizar quantidade local
       setQuantidades(prev => ({
         ...prev,
         [listing.id]: (prev[listing.id] || 0) + 1
@@ -178,7 +173,6 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
         return;
       }
 
-      // Atualizar quantidade local
       setQuantidades(prev => ({
         ...prev,
         [listing.id]: Math.max(0, (prev[listing.id] || 0) - 1)
@@ -187,6 +181,38 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
     } catch (error) {
       console.error('Erro ao remover do carrinho:', error);
     }
+  };
+
+  const abrirModal = (produto) => {
+    setProdutoSelecionado(produto);
+    setModalAberto(true);
+  };
+
+  const fecharModal = () => {
+    setModalAberto(false);
+    setProdutoSelecionado(null);
+  };
+
+  const createSlug = (name) => {
+    return name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  const irParaLoja = (nomeLoja) => {
+    const slug = createSlug(nomeLoja);
+    navigate(`/loja/${slug}`);
+    fecharModal();
+  };
+
+  const handleCardClick = (e, produto) => {
+    if (e.target.closest('.produto-controles')) {
+      return;
+    }
+    abrirModal(produto);
   };
 
   if (loading) {
@@ -216,7 +242,11 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
     <div className="produtos-container">      
       <div className="produtos-grid">
         {produtosFiltrados.map(produto => (
-          <div key={produto.id} className="produto-card">
+          <div 
+            key={produto.id} 
+            className="produto-card"
+            onClick={(e) => handleCardClick(e, produto)}
+          >
             <img 
               src={produto.imagem} 
               alt={produto.nome}
@@ -255,6 +285,70 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
           </div>
         ))}
       </div>
+
+      {modalAberto && produtoSelecionado && (
+        <div className="modal-overlay" onClick={fecharModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-fechar" onClick={fecharModal}>×</button>
+            
+            <div className="modal-body">
+              <div className="modal-imagem">
+                <img 
+                  src={produtoSelecionado.imagem} 
+                  alt={produtoSelecionado.nome}
+                />
+              </div>
+              
+              <div className="modal-info">
+                <h2 className="modal-titulo">{produtoSelecionado.nome}</h2>
+                
+                <p className="modal-descricao">
+                  {produtoSelecionado.descricao || 'Descrição não disponível'}
+                </p>
+                
+                <p className="modal-preco">
+                  R$ {produtoSelecionado.preco.toFixed(2).replace('.', ',')}
+                </p>
+                
+                <p className="modal-loja">
+                  Vendido por: <strong 
+                    onClick={() => irParaLoja(produtoSelecionado.loja)}
+                    className="modal-loja-link"
+                  >
+                    {produtoSelecionado.loja}
+                  </strong>
+                </p>
+                
+                <div className="modal-controles">
+                  <button 
+                    className="btn-carrinho btn-menos"
+                    onClick={() => removerDoCarrinho(produtoSelecionado)}
+                    disabled={!quantidades[produtoSelecionado.id] || quantidades[produtoSelecionado.id] === 0}
+                  >
+                    -
+                  </button>
+                  
+                  <span className="quantidade-produto">
+                    {quantidades[produtoSelecionado.id] || 0}
+                  </span>
+                  
+                  <button 
+                    className="btn-carrinho btn-mais"
+                    onClick={() => adicionarAoCarrinho(produtoSelecionado)}
+                    disabled={produtoSelecionado.stock === 0 || (quantidades[produtoSelecionado.id] >= produtoSelecionado.stock)}
+                  >
+                    +
+                  </button>
+                </div>
+
+                {produtoSelecionado.stock === 0 && (
+                  <p className="produto-sem-estoque">Sem estoque</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
