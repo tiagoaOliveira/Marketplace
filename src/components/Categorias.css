@@ -9,6 +9,8 @@
 }
 
 .categoria-card {
+  max-width: 110px;
+  max-height: 120px;
   background-color: var(--white);
   text-align: center;
   padding: var(--space-4);

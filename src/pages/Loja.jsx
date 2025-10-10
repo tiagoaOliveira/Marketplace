@@ -534,7 +534,7 @@ const Stores = () => {
           )}
 
           <div className="form-section">            
-            <div className="form-group">
+            <div className="form-group-loja">
               <label>Nome da Loja *</label>
               <input
                 type="text"
@@ -546,7 +546,7 @@ const Stores = () => {
               {formErrors.name && <span className="field-error">{formErrors.name}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="form-group-loja">
               <label>Razão Social</label>
               <input
                 type="text"
@@ -557,7 +557,7 @@ const Stores = () => {
               />
             </div>
 
-            <div className="form-group">
+            <div className="form-group-loja">
               <label>Categoria *</label>
               <select
                 name="category"
@@ -572,7 +572,7 @@ const Stores = () => {
               {formErrors.category && <span className="field-error">{formErrors.category}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="form-group-loja">
               <label>Descrição</label>
               <textarea
                 name="description"
@@ -583,7 +583,7 @@ const Stores = () => {
               />
             </div>
 
-            <div className="form-group">
+            <div className="form-group-loja">
               <label>CNPJ</label>
               <input
                 type="text"
@@ -599,7 +599,7 @@ const Stores = () => {
           <div className="form-section">
             <h3>Contato</h3>
             
-            <div className="form-group">
+            <div className="form-group-loja">
               <label>Email</label>
               <input
                 type="email"
@@ -611,7 +611,7 @@ const Stores = () => {
               {formErrors.email && <span className="field-error">{formErrors.email}</span>}
             </div>
 
-            <div className="form-group">
+            <div className="form-group-loja">
               <label>Telefone</label>
               <input
                 type="tel"
@@ -628,7 +628,7 @@ const Stores = () => {
             <h3>Endereço</h3>
             
             <div className="form-row">
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>Rua</label>
                 <input
                   type="text"
@@ -638,7 +638,7 @@ const Stores = () => {
                   placeholder="Nome da rua"
                 />
               </div>
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>Número</label>
                 <input
                   type="text"
@@ -650,7 +650,7 @@ const Stores = () => {
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="form-group-loja">
               <label>Complemento</label>
               <input
                 type="text"
@@ -662,7 +662,7 @@ const Stores = () => {
             </div>
 
             <div className="form-row">
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>Bairro</label>
                 <input
                   type="text"
@@ -672,7 +672,7 @@ const Stores = () => {
                   placeholder="Nome do bairro"
                 />
               </div>
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>Cidade</label>
                 <input
                   type="text"
@@ -685,7 +685,7 @@ const Stores = () => {
             </div>
 
             <div className="form-row">
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>Estado</label>
                 <input
                   type="text"
@@ -696,7 +696,7 @@ const Stores = () => {
                   maxLength="2"
                 />
               </div>
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>CEP</label>
                 <input
                   type="text"
@@ -743,7 +743,7 @@ const Stores = () => {
             </div>
 
             <form className="modal-form" onSubmit={handleProductSubmit}>
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>Produto</label>
                 <input
                   type="text"
@@ -752,7 +752,7 @@ const Stores = () => {
                 />
               </div>
 
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>Preço (R$)</label>
                 <input
                   type="number"
@@ -766,7 +766,7 @@ const Stores = () => {
                 />
               </div>
 
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>Estoque</label>
                 <input
                   type="number"
@@ -815,7 +815,7 @@ const Stores = () => {
             </div>
 
             <form className="modal-form" onSubmit={handleSubmitAddProduct}>
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>Produto</label>
                 <input
                   type="text"
@@ -824,7 +824,7 @@ const Stores = () => {
                 />
               </div>
 
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>Categoria</label>
                 <input
                   type="text"
@@ -833,7 +833,7 @@ const Stores = () => {
                 />
               </div>
 
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>Preço (R$)</label>
                 <input
                   type="number"
@@ -847,7 +847,7 @@ const Stores = () => {
                 />
               </div>
 
-              <div className="form-group">
+              <div className="form-group-loja">
                 <label>Estoque</label>
                 <input
                   type="number"

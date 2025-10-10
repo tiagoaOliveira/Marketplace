@@ -60,7 +60,7 @@ const CategoriasShowcase = ({ onCategoriaSelect, categoriaSelecionada }) => {
     },
     {
       id: 12,
-      nome: "Eletrodomésticos",
+      nome: "EletroDom.",
       icone: "🏠",
     },
   ];

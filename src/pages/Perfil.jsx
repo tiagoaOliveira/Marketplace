@@ -13,7 +13,12 @@ const PerfilUsuario = () => {
     password: '',
     confirmPassword: '',
     fullname: '',
-    phone: ''
+    phone: '',
+    cep: '',
+    cidade: '',
+    bairro: '',
+    rua: '',
+    numero: ''
   })
   const [formErrors, setFormErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -25,7 +30,12 @@ const PerfilUsuario = () => {
         ...prev,
         fullname: userProfile.fullname || '',
         email: userProfile.email || '',
-        phone: userProfile.phone || ''
+        phone: userProfile.phone || '',
+        cep: userProfile.cep || '',
+        cidade: userProfile.cidade || '',
+        bairro: userProfile.bairro || '',
+        rua: userProfile.rua || '',
+        numero: userProfile.numero || ''
       }))
     }
   }, [userProfile])
@@ -39,11 +49,29 @@ const PerfilUsuario = () => {
     }
   }
 
+  const formatPhone = (value) => {
+    // Remove tudo que não é número
+    const numbers = value.replace(/\D/g, '')
+    
+    // Aplica a máscara
+    if (numbers.length <= 2) {
+      return numbers
+    } else if (numbers.length <= 7) {
+      return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`
+    } else {
+      return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`
+    }
+  }
+
   const handleInputChange = (e) => {
     const { name, value } = e.target
+    
+    // Aplicar máscara no telefone
+    const newValue = name === 'phone' ? formatPhone(value) : value
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: newValue
     }))
     // Limpar erro do campo quando usuário digita
     if (formErrors[name]) {
@@ -77,6 +105,9 @@ const PerfilUsuario = () => {
       if (formData.phone && !/^\(\d{2}\)\s\d{4,5}-\d{4}$/.test(formData.phone)) {
         errors.phone = 'Formato: (11) 99999-9999'
       }
+      if (formData.cep && !/^\d{5}-?\d{3}$/.test(formData.cep)) {
+        errors.cep = 'Formato: 12345-678'
+      }
     }
 
     return errors
@@ -102,7 +133,18 @@ const PerfilUsuario = () => {
         } else {
           setTelaAtiva('menu')
           // Limpar form
-          setFormData({ email: '', password: '', confirmPassword: '', fullname: '', phone: '' })
+          setFormData({ 
+            email: '', 
+            password: '', 
+            confirmPassword: '', 
+            fullname: '', 
+            phone: '',
+            cep: '',
+            cidade: '',
+            bairro: '',
+            rua: '',
+            numero: ''
+          })
         }
       }
 
@@ -112,14 +154,30 @@ const PerfilUsuario = () => {
           setFormErrors({ submit: error })
         } else {
           setTelaAtiva('menu')
-          setFormData({ email: '', password: '', confirmPassword: '', fullname: '', phone: '' })
+          setFormData({ 
+            email: '', 
+            password: '', 
+            confirmPassword: '', 
+            fullname: '', 
+            phone: '',
+            cep: '',
+            cidade: '',
+            bairro: '',
+            rua: '',
+            numero: ''
+          })
         }
       }
 
       if (type === 'dados') {
         const updates = {
           fullname: formData.fullname,
-          phone: formData.phone || null
+          phone: formData.phone || null,
+          cep: formData.cep || null,
+          cidade: formData.cidade || null,
+          bairro: formData.bairro || null,
+          rua: formData.rua || null,
+          numero: formData.numero || null
         }
         const { error } = await updateProfile(updates)
         if (error) {
@@ -141,7 +199,6 @@ const PerfilUsuario = () => {
   }
 
   const navigateToStores = () => {
-    // Usar navigate do React Router em vez de window.location.href
     navigate('/loja')
   }
 
@@ -343,9 +400,66 @@ const PerfilUsuario = () => {
           name="phone"
           value={formData.phone}
           onChange={handleInputChange}
-          placeholder="(11) 99999-9999" 
+          placeholder="(11) 99999-9999"
+          maxLength="15"
         />
         {formErrors.phone && <span className="field-error">{formErrors.phone}</span>}
+      </div>
+
+      <div className="form-group">
+        <label>CEP</label>
+        <input 
+          type="text" 
+          name="cep"
+          value={formData.cep}
+          onChange={handleInputChange}
+          placeholder="12345-678" 
+        />
+        {formErrors.cep && <span className="field-error">{formErrors.cep}</span>}
+      </div>
+
+      <div className="form-group">
+        <label>Cidade</label>
+        <input 
+          type="text" 
+          name="cidade"
+          value={formData.cidade}
+          onChange={handleInputChange}
+          placeholder="Digite sua cidade" 
+        />
+      </div>
+
+      <div className="form-group">
+        <label>Bairro</label>
+        <input 
+          type="text" 
+          name="bairro"
+          value={formData.bairro}
+          onChange={handleInputChange}
+          placeholder="Digite seu bairro" 
+        />
+      </div>
+
+      <div className="form-group">
+        <label>Rua</label>
+        <input 
+          type="text" 
+          name="rua"
+          value={formData.rua}
+          onChange={handleInputChange}
+          placeholder="Digite sua rua" 
+        />
+      </div>
+
+      <div className="form-group">
+        <label>Número</label>
+        <input 
+          type="text" 
+          name="numero"
+          value={formData.numero}
+          onChange={handleInputChange}
+          placeholder="Digite o número" 
+        />
       </div>
       
       <button 

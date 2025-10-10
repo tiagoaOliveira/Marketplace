@@ -119,6 +119,10 @@ const PerfilLoja = () => {
     }
   };
 
+  const handleVoltar = () => {
+    window.history.back();
+  };
+
   if (loading) {
     return <div className="perfil-loja-container">Carregando...</div>;
   }
@@ -131,16 +135,15 @@ const PerfilLoja = () => {
     <div className="perfil-loja-container">
       {/* Header da Loja */}
       <div className="loja-header">
+        <button className="btn-voltar" onClick={handleVoltar}>
+          ←
+        </button>
         <div className="loja-info">
           <h1 className="loja-nome">{loja.name}</h1>
-          {loja.business_name && (
-            <p className="loja-razao-social">{loja.business_name}</p>
-          )}
           {loja.description && (
             <p className="loja-descricao">{loja.description}</p>
           )}
           <div className="loja-detalhes">
-            <span className="loja-categoria">{loja.category}</span>
             {loja.email && (
               <span className="loja-contato">📧 {loja.email}</span>
             )}
@@ -152,9 +155,7 @@ const PerfilLoja = () => {
       </div>
 
       {/* Produtos da Loja */}
-      <div className="loja-produtos-section">
-        <h2 className="secao-titulo">Produtos da Loja</h2>
-        
+      <div className="loja-produtos-section">        
         {produtos.length === 0 ? (
           <p className="sem-produtos">Esta loja ainda não possui produtos cadastrados.</p>
         ) : (

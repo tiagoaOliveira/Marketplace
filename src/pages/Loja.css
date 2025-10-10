@@ -62,21 +62,21 @@
   margin-bottom: var(--space-8);
 }
 
-.form-group {
+.form-group-loja {
   margin-bottom: var(--space-6);
   position: relative;
 }
 
-.form-group label {
+.form-group-loja label {
   display: block;
   margin-bottom: var(--space-2);
   color: var(--neutral-900);
   font-weight: 500;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.form-group-loja input,
+.form-group-loja select,
+.form-group-loja textarea {
   width: 100%;
   padding: var(--space-3) var(--space-4);
   border: 2px solid var(--neutral-bg);
@@ -88,14 +88,14 @@
   box-sizing: border-box;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+.form-group-loja input:focus,
+.form-group-loja select:focus,
+.form-group-loja textarea:focus {
   outline: none;
   border-color: var(--primary);
 }
 
-.form-group textarea {
+.form-group-loja textarea {
   resize: vertical;
   min-height: 80px;
 }
@@ -515,7 +515,7 @@
   color: var(--neutral-900);
 }
 
-.modal-form .form-group {
+.modal-form .form-group-loja {
   margin-bottom: var(--space-4);
 }
 

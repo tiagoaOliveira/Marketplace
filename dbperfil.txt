@@ -53,3 +53,21 @@ COMMENT ON COLUMN users.fullname IS 'Nome completo do usuário';
 COMMENT ON COLUMN users.email IS 'Email único do usuário';
 COMMENT ON COLUMN users.phone IS 'Número de telefone (opcional)';
 COMMENT ON COLUMN users.created_at IS 'Data de criação do registro';
+
+-- Adicionar colunas de endereço na tabela users
+ALTER TABLE users 
+ADD COLUMN cep TEXT,
+ADD COLUMN cidade TEXT,
+ADD COLUMN bairro TEXT,
+ADD COLUMN rua TEXT,
+ADD COLUMN numero TEXT;
+
+-- Comentários para documentação
+COMMENT ON COLUMN users.cep IS 'CEP do endereço do usuário';
+COMMENT ON COLUMN users.cidade IS 'Cidade do usuário';
+COMMENT ON COLUMN users.bairro IS 'Bairro do usuário';
+COMMENT ON COLUMN users.rua IS 'Rua/Logradouro do usuário';
+COMMENT ON COLUMN users.numero IS 'Número do endereço';
+
+-- Criar índice no CEP para buscas
+CREATE INDEX idx_users_cep ON users(cep);

@@ -94,7 +94,7 @@
 .conta-form {
   background-color: var(--white);
   border-radius: 12px;
-  padding: var(--space-8);
+  padding: var(--space-4);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -105,13 +105,12 @@
 }
 
 .form-group {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-2);
   position: relative;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: var(--space-2);
   color: var(--neutral-900);
   font-weight: 500;
 }
@@ -237,7 +236,7 @@
   }
   
   .conta-form {
-    padding: var(--space-6);
+    padding: var(--space-4);
   }
   
   .opcao-icone {
