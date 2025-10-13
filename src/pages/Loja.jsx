@@ -950,19 +950,7 @@ const Stores = () => {
 
                     {expandedProducts === store.id && (
                       <div className="store-products-content">
-                        {store.description && (
-                          <div className="store-description">
-                            <p>{store.description}</p>
-                          </div>
-                        )}
-
-                        {(store.email || store.phone) && (
-                          <div className="store-contact">
-                            {store.email && <span>📧 {store.email}</span>}
-                            {store.phone && <span>📞 {store.phone}</span>}
-                          </div>
-                        )}
-
+                        
                         <div className="store-products">
                           {loadingProducts[store.id] ? (
                             <p className="loading-products">Carregando produtos...</p>

@@ -30,17 +30,13 @@ export const AuthProvider = ({ children }) => {
 
     // Verificar usuário atual no carregamento
     const getInitialUser = async () => {
-      try {
-        console.log('Iniciando verificação de usuário...')
-        
+      try {        
         const user = await auth.getUser()
-        console.log('Resultado da verificação inicial:', user)
         
         if (!isMounted) return
         
         if (user) {
           setUser(user)
-          console.log('Usuário encontrado, buscando perfil...')
           
           // Tentar buscar perfil com timeout
           try {
@@ -57,28 +53,21 @@ export const AuthProvider = ({ children }) => {
             if (!isMounted) return
             
             if (profileError) {
-              console.log('Erro ao buscar perfil (normal para novos usuários):', profileError)
             } else if (profile) {
               setUserProfile(profile)
-              console.log('Perfil carregado:', profile)
             }
           } catch (profileError) {
-            console.log('Erro ou timeout ao buscar perfil:', profileError.message)
-            // Não é um erro crítico - usuário pode existir sem perfil completo
           }
         } else {
-          console.log('Nenhum usuário autenticado encontrado')
           clearUserData()
         }
       } catch (error) {
-        console.error('Erro ao carregar usuário inicial:', error)
         if (isMounted) {
           setError('Erro ao verificar autenticação')
           clearUserData()
         }
       } finally {
         if (isMounted) {
-          console.log('Finalizando carregamento inicial')
           setLoading(false)
         }
       }
@@ -89,13 +78,11 @@ export const AuthProvider = ({ children }) => {
     // Escutar mudanças de autenticação
     const subscription = auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Mudança de estado de auth:', event, session?.user?.email)
         
         if (!isMounted) return
         
         try {
           if (session?.user) {
-            console.log('Usuário detectado na mudança de auth:', session.user.email)
             setUser(session.user)
             setError(null)
             setLoading(false) // Importante: definir loading como false aqui
@@ -106,14 +93,11 @@ export const AuthProvider = ({ children }) => {
                 const { data: profile, error: profileError } = await userService.getProfile(session.user.id)
                 if (!profileError && profile && isMounted) {
                   setUserProfile(profile)
-                  console.log('Perfil carregado via auth change:', profile)
                 }
               } catch (profileError) {
-                console.log('Erro ao buscar perfil na mudança de auth:', profileError)
               }
             }, 100)
           } else {
-            console.log('Usuário deslogado')
             clearUserData()
             setLoading(false)
           }

@@ -106,32 +106,38 @@ export const listingsService = {
 // ========================
 export const cartService = {
   // Obter carrinho ativo do usuário
-  async getActiveCart(userId) {
-    const { data, error } = await supabase
-      .from('carts')
-      .select(`
-        *,
-        cart_items!cart_items_cart_id_fkey (
+async getActiveCart(userId) {
+  const { data, error } = await supabase
+    .from('carts')
+    .select(`
+      *,
+      cart_items!cart_items_cart_id_fkey (
+        id,
+        quantity,
+        product_listing_id,
+        product_listings!cart_items_product_listing_id_fkey (
           id,
-          quantity,
-          product_listings!cart_items_product_listing_id_fkey (
+          price,
+          stock,
+          store_id,
+          products!product_listings_product_id_fkey (
             id,
-            price,
-            stock,
-            products!product_listings_product_id_fkey (
-              id,
-              name,
-              category
-            )
+            name,
+            category
+          ),
+          stores!product_listings_store_id_fkey (
+            id,
+            name
           )
         )
-      `)
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .maybeSingle()
+      )
+    `)
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle()
 
-    return { data, error }
-  },
+  return { data, error }
+},
 
   // Criar novo carrinho
   async createCart(userId) {

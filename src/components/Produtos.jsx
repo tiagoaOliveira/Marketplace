@@ -288,7 +288,7 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
 
       {modalAberto && produtoSelecionado && (
         <div className="modal-overlay" onClick={fecharModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content-products" onClick={(e) => e.stopPropagation()}>
             <button className="modal-fechar" onClick={fecharModal}>×</button>
             
             <div className="modal-body">

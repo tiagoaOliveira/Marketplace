@@ -10,7 +10,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-6);
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-4);
   max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
@@ -72,17 +72,47 @@
 .carrinho-itens {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
 }
 
-.carrinho-item {
+/* Grupo de Loja */
+.loja-grupo {
   background-color: var(--white);
   border-radius: 12px;
-  padding: var(--space-6);
+  overflow: hidden;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.loja-cabecalho {
+  background-color: var(--neutral-bg);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 2px solid var(--neutral-200);
+}
+
+.loja-nome {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--neutral-900);
+}
+
+.loja-produtos {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Item do Carrinho */
+.carrinho-item {
+  background-color: var(--white);
+  padding: var(--space-6);
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.carrinho-item:last-child {
+  border-bottom: none;
 }
 
 .item-imagem {
@@ -100,7 +130,6 @@
   font-size: 18px;
   font-weight: 600;
   color: var(--neutral-900);
-  margin: 0 0 var(--space-2) 0;
 }
 
 .item-preco {
@@ -135,11 +164,6 @@
   font-weight: 600;
   color: var(--neutral-900);
   transition: background-color 0.2s ease;
-}
-
-.btn-quantidade:hover {
-  background-color: var(--primary);
-  color: var(--white);
 }
 
 .quantidade {
@@ -216,28 +240,37 @@
   .carrinho-container {
     padding: 1rem 0.5rem;
   }
+
   
-  .carrinho-header {
-    margin-bottom: var(--space-6);
-  }
   .carrinho-header h1 {
     font-size: 1.25rem;
   }
   
+  .loja-nome {
+    font-size: 16px;
+  }
+  
   .carrinho-item {
-    padding: 0rem;
+    padding: var(--space-2);
     text-align: center;
     gap: var(--space-2);
+    flex-wrap: wrap;
   }
   
   .item-detalhes {
     order: 2;
+    width: 100%;
+  }
+  
+  .item-imagem {
+    order: 1;
   }
   
   .item-controles {
     order: 3;
     justify-content: center;
-    gap: 0;
+    width: 100%;
+    gap: var(--space-2);
   }
 
   .quantidade-controles {

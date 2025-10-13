@@ -52,7 +52,7 @@ const PerfilUsuario = () => {
   const formatPhone = (value) => {
     // Remove tudo que não é número
     const numbers = value.replace(/\D/g, '')
-    
+
     // Aplica a máscara
     if (numbers.length <= 2) {
       return numbers
@@ -65,10 +65,10 @@ const PerfilUsuario = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    
+
     // Aplicar máscara no telefone
     const newValue = name === 'phone' ? formatPhone(value) : value
-    
+
     setFormData(prev => ({
       ...prev,
       [name]: newValue
@@ -84,7 +84,7 @@ const PerfilUsuario = () => {
 
   const validateForm = (type) => {
     const errors = {}
-    
+
     if (type === 'cadastro') {
       if (!formData.fullname.trim()) errors.fullname = 'Nome é obrigatório'
       if (!formData.email.trim()) errors.email = 'Email é obrigatório'
@@ -94,7 +94,7 @@ const PerfilUsuario = () => {
         errors.confirmPassword = 'Senhas não coincidem'
       }
     }
-    
+
     if (type === 'login') {
       if (!formData.email.trim()) errors.email = 'Email é obrigatório'
       if (!formData.password) errors.password = 'Senha é obrigatória'
@@ -115,7 +115,7 @@ const PerfilUsuario = () => {
 
   const handleSubmit = async (e, type) => {
     e.preventDefault()
-    
+
     const errors = validateForm(type)
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors)
@@ -133,11 +133,11 @@ const PerfilUsuario = () => {
         } else {
           setTelaAtiva('menu')
           // Limpar form
-          setFormData({ 
-            email: '', 
-            password: '', 
-            confirmPassword: '', 
-            fullname: '', 
+          setFormData({
+            email: '',
+            password: '',
+            confirmPassword: '',
+            fullname: '',
             phone: '',
             cep: '',
             cidade: '',
@@ -154,11 +154,11 @@ const PerfilUsuario = () => {
           setFormErrors({ submit: error })
         } else {
           setTelaAtiva('menu')
-          setFormData({ 
-            email: '', 
-            password: '', 
-            confirmPassword: '', 
-            fullname: '', 
+          setFormData({
+            email: '',
+            password: '',
+            confirmPassword: '',
+            fullname: '',
             phone: '',
             cep: '',
             cidade: '',
@@ -237,6 +237,13 @@ const PerfilUsuario = () => {
               <p>Gerenciar lojas e produtos</p>
             </div>
           </div>
+          <div className="conta-opcao">
+            <span className="opcao-icone">🚪</span>
+            <div>
+              <h3>Pedidos</h3>
+              <p>Histórico de Vendas</p>
+            </div>
+          </div>
           <div className="conta-opcao" onClick={handleLogout}>
             <span className="opcao-icone">🚪</span>
             <div>
@@ -252,61 +259,61 @@ const PerfilUsuario = () => {
   const renderCadastro = () => (
     <form className="conta-form" onSubmit={(e) => handleSubmit(e, 'cadastro')}>
       <h2>Criar Conta</h2>
-      
+
       {formErrors.submit && (
         <div className="error-message">{formErrors.submit}</div>
       )}
-      
+
       <div className="form-group">
         <label>Nome Completo</label>
-        <input 
-          type="text" 
+        <input
+          type="text"
           name="fullname"
           value={formData.fullname}
           onChange={handleInputChange}
-          placeholder="Digite seu nome completo" 
+          placeholder="Digite seu nome completo"
         />
         {formErrors.fullname && <span className="field-error">{formErrors.fullname}</span>}
       </div>
-      
+
       <div className="form-group">
         <label>Email</label>
-        <input 
-          type="email" 
+        <input
+          type="email"
           name="email"
           value={formData.email}
           onChange={handleInputChange}
-          placeholder="Digite seu email" 
+          placeholder="Digite seu email"
         />
         {formErrors.email && <span className="field-error">{formErrors.email}</span>}
       </div>
-      
+
       <div className="form-group">
         <label>Senha</label>
-        <input 
-          type="password" 
+        <input
+          type="password"
           name="password"
           value={formData.password}
           onChange={handleInputChange}
-          placeholder="Digite sua senha" 
+          placeholder="Digite sua senha"
         />
         {formErrors.password && <span className="field-error">{formErrors.password}</span>}
       </div>
-      
+
       <div className="form-group">
         <label>Confirmar Senha</label>
-        <input 
-          type="password" 
+        <input
+          type="password"
           name="confirmPassword"
           value={formData.confirmPassword}
           onChange={handleInputChange}
-          placeholder="Confirme sua senha" 
+          placeholder="Confirme sua senha"
         />
         {formErrors.confirmPassword && <span className="field-error">{formErrors.confirmPassword}</span>}
       </div>
-      
-      <button 
-        type="submit" 
+
+      <button
+        type="submit"
         className="btn btn-primary btn-lg"
         disabled={isSubmitting}
       >
@@ -318,46 +325,46 @@ const PerfilUsuario = () => {
   const renderLogin = () => (
     <form className="conta-form" onSubmit={(e) => handleSubmit(e, 'login')}>
       <h2>Entrar</h2>
-      
+
       {formErrors.submit && (
         <div className="error-message">{formErrors.submit}</div>
       )}
-      
+
       <div className="form-group">
         <label>Email</label>
-        <input 
-          type="email" 
+        <input
+          type="email"
           name="email"
           value={formData.email}
           onChange={handleInputChange}
-          placeholder="Digite seu email" 
+          placeholder="Digite seu email"
         />
         {formErrors.email && <span className="field-error">{formErrors.email}</span>}
       </div>
-      
+
       <div className="form-group">
         <label>Senha</label>
-        <input 
-          type="password" 
+        <input
+          type="password"
           name="password"
           value={formData.password}
           onChange={handleInputChange}
-          placeholder="Digite sua senha" 
+          placeholder="Digite sua senha"
         />
         {formErrors.password && <span className="field-error">{formErrors.password}</span>}
       </div>
-      
-      <button 
-        type="submit" 
+
+      <button
+        type="submit"
         className="btn btn-primary btn-lg"
         disabled={isSubmitting}
       >
         {isSubmitting ? 'Entrando...' : 'Entrar'}
       </button>
-      
-      <button 
-        type="button" 
-        className="btn-link" 
+
+      <button
+        type="button"
+        className="btn-link"
         onClick={() => setTelaAtiva('cadastro')}
       >
         Não tem conta? Cadastre-se
@@ -366,37 +373,37 @@ const PerfilUsuario = () => {
   )
 
   const renderDados = () => (
-    <form className="conta-form" onSubmit={(e) => handleSubmit(e, 'dados')}>      
+    <form className="conta-form" onSubmit={(e) => handleSubmit(e, 'dados')}>
       {formErrors.submit && (
         <div className="error-message">{formErrors.submit}</div>
       )}
-      
+
       <div className="form-group">
         <label>Nome Completo</label>
-        <input 
-          type="text" 
+        <input
+          type="text"
           name="fullname"
           value={formData.fullname}
           onChange={handleInputChange}
         />
         {formErrors.fullname && <span className="field-error">{formErrors.fullname}</span>}
       </div>
-      
+
       <div className="form-group">
         <label>Email</label>
-        <input 
-          type="email" 
+        <input
+          type="email"
           value={formData.email}
           disabled
           className="disabled-field"
         />
         <small>Email não pode ser alterado</small>
       </div>
-      
+
       <div className="form-group">
         <label>Telefone</label>
-        <input 
-          type="tel" 
+        <input
+          type="tel"
           name="phone"
           value={formData.phone}
           onChange={handleInputChange}
@@ -408,62 +415,62 @@ const PerfilUsuario = () => {
 
       <div className="form-group">
         <label>CEP</label>
-        <input 
-          type="text" 
+        <input
+          type="text"
           name="cep"
           value={formData.cep}
           onChange={handleInputChange}
-          placeholder="12345-678" 
+          placeholder="12345-678"
         />
         {formErrors.cep && <span className="field-error">{formErrors.cep}</span>}
       </div>
 
       <div className="form-group">
         <label>Cidade</label>
-        <input 
-          type="text" 
+        <input
+          type="text"
           name="cidade"
           value={formData.cidade}
           onChange={handleInputChange}
-          placeholder="Digite sua cidade" 
+          placeholder="Digite sua cidade"
         />
       </div>
 
       <div className="form-group">
         <label>Bairro</label>
-        <input 
-          type="text" 
+        <input
+          type="text"
           name="bairro"
           value={formData.bairro}
           onChange={handleInputChange}
-          placeholder="Digite seu bairro" 
+          placeholder="Digite seu bairro"
         />
       </div>
 
       <div className="form-group">
         <label>Rua</label>
-        <input 
-          type="text" 
+        <input
+          type="text"
           name="rua"
           value={formData.rua}
           onChange={handleInputChange}
-          placeholder="Digite sua rua" 
+          placeholder="Digite sua rua"
         />
       </div>
 
       <div className="form-group">
         <label>Número</label>
-        <input 
-          type="text" 
+        <input
+          type="text"
           name="numero"
           value={formData.numero}
           onChange={handleInputChange}
-          placeholder="Digite o número" 
+          placeholder="Digite o número"
         />
       </div>
-      
-      <button 
-        type="submit" 
+
+      <button
+        type="submit"
         className="btn btn-primary btn-lg"
         disabled={isSubmitting}
       >
