@@ -2,12 +2,14 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import Pedidos from './Pedidos'
 import './Perfil.css'
 
 const PerfilUsuario = () => {
   const { user, userProfile, signUp, signIn, signOut, updateProfile, loading, error, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [telaAtiva, setTelaAtiva] = useState('menu')
+  const [isVendor, setIsVendor] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -24,7 +26,6 @@ const PerfilUsuario = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    // Preencher form com dados do usuário quando carregados
     if (userProfile) {
       setFormData(prev => ({
         ...prev,
@@ -50,10 +51,7 @@ const PerfilUsuario = () => {
   }
 
   const formatPhone = (value) => {
-    // Remove tudo que não é número
     const numbers = value.replace(/\D/g, '')
-
-    // Aplica a máscara
     if (numbers.length <= 2) {
       return numbers
     } else if (numbers.length <= 7) {
@@ -65,15 +63,12 @@ const PerfilUsuario = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
-
-    // Aplicar máscara no telefone
     const newValue = name === 'phone' ? formatPhone(value) : value
 
     setFormData(prev => ({
       ...prev,
       [name]: newValue
     }))
-    // Limpar erro do campo quando usuário digita
     if (formErrors[name]) {
       setFormErrors(prev => ({
         ...prev,
@@ -132,7 +127,6 @@ const PerfilUsuario = () => {
           setFormErrors({ submit: error })
         } else {
           setTelaAtiva('menu')
-          // Limpar form
           setFormData({
             email: '',
             password: '',
@@ -207,7 +201,7 @@ const PerfilUsuario = () => {
       {!isAuthenticated ? (
         <>
           <div className="conta-opcao" onClick={() => setTelaAtiva('login')}>
-            <span className="opcao-icone">🔐</span>
+            <span className="opcao-icone">🔑</span>
             <div>
               <h3>Entrar</h3>
               <p>Acesse sua conta</p>
@@ -230,18 +224,18 @@ const PerfilUsuario = () => {
               <p>Edite suas informações</p>
             </div>
           </div>
+          <div className="conta-opcao" onClick={() => setTelaAtiva('pedidos')}>
+            <span className="opcao-icone">📦</span>
+            <div>
+              <h3>Pedidos</h3>
+              <p>Histórico de Vendas</p>
+            </div>
+          </div>
           <div className="conta-opcao" onClick={navigateToStores}>
             <span className="opcao-icone">🏪</span>
             <div>
               <h3>Minha Loja</h3>
               <p>Gerenciar lojas e produtos</p>
-            </div>
-          </div>
-          <div className="conta-opcao">
-            <span className="opcao-icone">🚪</span>
-            <div>
-              <h3>Pedidos</h3>
-              <p>Histórico de Vendas</p>
             </div>
           </div>
           <div className="conta-opcao" onClick={handleLogout}>
@@ -491,6 +485,8 @@ const PerfilUsuario = () => {
         return renderLogin()
       case 'dados':
         return renderDados()
+      case 'pedidos':
+        return <Pedidos user={user} userProfile={userProfile} isVendor={isVendor} />
       default:
         return renderMenu()
     }
@@ -504,6 +500,8 @@ const PerfilUsuario = () => {
         return 'Entrar'
       case 'dados':
         return 'Meus Dados'
+      case 'pedidos':
+        return 'Pedidos'
       default:
         return isAuthenticated ? 'Minha Conta' : 'Conta'
     }
