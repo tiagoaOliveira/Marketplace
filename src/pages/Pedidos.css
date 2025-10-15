@@ -1,13 +1,53 @@
-/* src/pages/Pedidos.css */
-
 .pedidos-container {
     width: 100%;
+}
+
+.visao-alternador {
+    display: flex;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+    margin-top: -1rem;
+    padding: var(--space-4);
+    background-color: var(--neutral-bg);
+    border-radius: 12px;
+    border: 2px solid var(--neutral-200);
+}
+
+.visao-btn {
+    flex: 1;
+    padding: var(--space-3) var(--space-4);
+    border: 2px solid var(--neutral-200);
+    background-color: var(--white);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--neutral-600);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+.visao-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.visao-btn.ativo {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: var(--white);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
 }
 
 .pedidos-filtros {
     display: flex;
     gap: var(--space-3);
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-4);
     flex-wrap: wrap;
 }
 
@@ -63,6 +103,8 @@
     overflow: hidden;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border-left: 4px solid var(--primary);
+    border-bottom: 4px solid var(--primary);
+    margin: 0 -0.8rem;
 }
 
 .pedido-header {
@@ -130,6 +172,7 @@
 
 .pedido-botoes {
     display: flex;
+    flex-direction: column;
     gap: var(--space-2);
 }
 
@@ -173,7 +216,7 @@
 }
 
 .pedido-expandido h4 {
-    margin: 0 0 var(--space-4) 0;
+    margin: 0 0 var(--space-1) 0;
     font-size: 14px;
     font-weight: 600;
     color: var(--neutral-900);
@@ -188,7 +231,7 @@
 }
 
 .pedido-endereco p {
-    margin: var(--space-2) 0;
+    margin: var(--space-1) 0;
     color: var(--neutral-700);
     font-size: 14px;
     line-height: 1.5;
@@ -208,7 +251,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-3) 0;
+    padding: var(--space-2) 0;
     border-bottom: 1px solid var(--neutral-100);
     gap: var(--space-4);
 }
@@ -263,6 +306,17 @@
 }
 
 @media (max-width: 768px) {
+    .visao-alternador {
+        flex-direction: column;
+        gap: var(--space-2);
+        padding: var(--space-3);
+    }
+
+    .visao-btn {
+        padding: var(--space-2) var(--space-3);
+        font-size: 14px;
+    }
+
     .pedidos-filtros {
         gap: var(--space-2);
     }

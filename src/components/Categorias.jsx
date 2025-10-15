@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './categorias.css';
 
 const CategoriasShowcase = ({ onCategoriaSelect, categoriaSelecionada }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
   const categorias = [
     {
       id: 1,
@@ -66,7 +68,6 @@ const CategoriasShowcase = ({ onCategoriaSelect, categoriaSelecionada }) => {
   ];
 
   const handleCategoriaClick = (categoria) => {
-    // Se clicar na categoria já selecionada, remove a seleção
     if (categoriaSelecionada === categoria.nome) {
       onCategoriaSelect(null);
     } else {
@@ -75,21 +76,64 @@ const CategoriasShowcase = ({ onCategoriaSelect, categoriaSelecionada }) => {
   };
 
   return (
-    <div className="categorias-container">
-      {categorias.map(categoria => (
-        <div 
-          key={categoria.id} 
-          className={`categoria-card ${categoriaSelecionada === categoria.nome ? 'categoria-selecionada' : ''}`}
-          onClick={() => handleCategoriaClick(categoria)}
-        >
-          <div className="categoria-icone">
-            {categoria.icone}
-          </div>
-          <h3 className="categoria-nome">{categoria.nome}</h3>
+    <div className="categorias-wrapper">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className={`categorias-toggle ${isExpanded ? 'expanded' : ''}`}
+      >
+        <span className="categorias-toggle-content">
+          <span className={`categorias-arrow ${isExpanded ? 'rotated' : ''}`}>
+            ▼
+          </span>
+          Categorias
+        </span>
+        {categoriaSelecionada && (
+          <span className="categorias-badge">
+            {categoriaSelecionada}
+          </span>
+        )}
+      </button>
+      
+      <div className={`categorias-expandable ${isExpanded ? 'expanded' : ''}`}>
+        <div className="categorias-container">
+          {categorias.map(categoria => (
+            <div 
+              key={categoria.id} 
+              className={`categoria-card ${categoriaSelecionada === categoria.nome ? 'categoria-selecionada' : ''}`}
+              onClick={() => handleCategoriaClick(categoria)}
+            >
+              <div className="categoria-icone">
+                {categoria.icone}
+              </div>
+              <h3 className="categoria-nome">{categoria.nome}</h3>
+            </div>
+          ))}
         </div>
-      ))}
+      </div>
     </div>
   );
 };
 
-export default CategoriasShowcase;
+export default function App() {
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState(null);
+  
+  return (
+    <div>
+      <CategoriasShowcase 
+        onCategoriaSelect={setCategoriaSelecionada}
+        categoriaSelecionada={categoriaSelecionada}
+      />
+      
+      {categoriaSelecionada && (
+        <div>
+          <h2>
+            Categoria Selecionada
+          </h2>
+          <p>
+            {categoriaSelecionada}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
