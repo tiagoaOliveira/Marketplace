@@ -1,7 +1,7 @@
 /* Wrapper principal */
 .categorias-wrapper {
   max-width: 1200px;
-  margin: 0 auto;
+  margin: 0.75rem auto;
   background-color: var(--neutral-bg);
 }
 

@@ -1,0 +1,286 @@
+/* SearchSystem.css */
+
+.search-system {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.search-container {
+  position: relative;
+  width: 100%;
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  background: #fff;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.search-input-wrapper:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-icon {
+  color: #999;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.search-input::placeholder {
+  color: #ccc;
+}
+
+.clear-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  transition: color 0.2s;
+}
+
+.clear-btn:hover {
+  color: #333;
+}
+
+/* Painel de resultados */
+.search-results-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  max-height: 500px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+/* Estados */
+.loading-state,
+.error-state,
+.empty-state {
+  padding: 32px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.loading-state {
+  color: #666;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-state {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+.error-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.empty-state {
+  color: #999;
+}
+
+.empty-state svg {
+  opacity: 0.5;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Seções de resultados */
+.results-section {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.results-section:last-child {
+  border-bottom: none;
+}
+
+.results-title {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #999;
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.results-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.result-item {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.result-item:hover {
+  background: #f9f9f9;
+}
+
+.result-item:last-child {
+  border-bottom: none;
+}
+
+.result-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.result-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-category {
+  font-size: 12px;
+  color: #999;
+}
+
+.result-badge {
+  font-size: 11px;
+  padding: 4px 8px;
+  background: #e3f2fd;
+  color: #1976d2;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.result-badge.store {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+/* Buscas recentes */
+.recent-searches {
+  padding: 12px 0;
+}
+
+.recent-item {
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.recent-item:hover {
+  background: #f9f9f9;
+}
+
+.recent-item svg {
+  color: #999;
+  flex-shrink: 0;
+}
+
+.recent-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  text-align: left;
+  flex: 1;
+  padding: 0;
+  font-family: inherit;
+}
+
+.recent-btn:hover {
+  color: #3b82f6;
+}
+
+/* Rodapé dos resultados */
+.results-footer {
+  padding: 12px 16px;
+  background: #fafafa;
+  text-align: center;
+  border-top: 1px solid #f0f0f0;
+}
+
+.results-count {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+}
+
+/* Responsivo */
+@media (max-width: 640px) {
+  .search-system {
+    max-width: 100%;
+  }
+
+  .search-results-panel {
+    max-height: 400px;
+  }
+
+  .result-item,
+  .recent-item {
+    padding: 10px 12px;
+  }
+
+  .search-icon,
+  .clear-btn {
+    min-width: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}

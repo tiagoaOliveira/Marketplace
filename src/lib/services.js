@@ -123,6 +123,7 @@ async getActiveCart(userId) {
           products!product_listings_product_id_fkey (
             id,
             name,
+            description,
             category
           ),
           stores!product_listings_store_id_fkey (

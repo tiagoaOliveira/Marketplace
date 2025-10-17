@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { Search, User, Heart, ShoppingCart } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import './Header.css'
-import Carrossel from './Carrossel'
+//import Carrossel from './Carrossel'
 import Produtos from './Produtos'
 import Categorias from './Categorias'
+import SearchSystem from './SearchSystem';
+
 
 function Header() {
   const [categoriaSelecionada, setCategoriaSelecionada] = useState('Todos');
@@ -34,25 +36,21 @@ function Header() {
           </Link>
         </div>
       </div>
-      
+
       <div className="header-search">
         <div className="search-wrapper">
           <Search className="search-icon" size={26} />
-          <input
-            type="text"
-            placeholder=" Buscar produtos..."
-            className="search-input"
-          />
+          <SearchSystem/>
+
         </div>
       </div>
 
-      <Carrossel />    
-      <Categorias 
+      <Categorias
         onCategoriaSelect={handleCategoriaSelect}
         categoriaSelecionada={categoriaSelecionada}
       />
-      
-      <Produtos 
+
+      <Produtos
         categoriaFiltro={categoriaSelecionada === 'Todos' ? null : categoriaSelecionada}
       />
     </div>
