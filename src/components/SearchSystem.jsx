@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { Search, X, Loader } from 'lucide-react';
+import { searchService } from '../lib/searchService';
 import './SearchSystem.css';
 
 function SearchSystem() {
@@ -13,7 +14,7 @@ function SearchSystem() {
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const searchBoxRef = useRef(null);
 
-  // Carregar buscas recentes do localStorage (simulado com state)
+  // Carregar buscas recentes
   useEffect(() => {
     const saved = JSON.parse(sessionStorage.getItem('recentSearches') || '[]');
     setRecentSearches(saved);
@@ -22,7 +23,7 @@ function SearchSystem() {
   // Debounce para a busca
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchTerm.trim()) {
+      if (searchTerm.trim().length >= 2) {
         performSearch();
       } else {
         setProdutos([]);
@@ -47,25 +48,23 @@ function SearchSystem() {
   }, []);
 
   const performSearch = async () => {
-    if (!searchTerm.trim()) return;
+    if (searchTerm.trim().length < 2) return;
 
     setLoading(true);
     setError('');
     setSelectedIndex(-1);
 
     try {
-      // Simular busca - substituir pela sua API real
-      await new Promise(r => setTimeout(r, 500));
-      
-      // Dados simulados
-      setProdutos([
-        { id: 1, name: 'Smartphone ' + searchTerm, category: 'Eletrônicos' },
-        { id: 2, name: 'Case ' + searchTerm, category: 'Acessórios' },
-      ]);
-      
-      setLojas([
-        { id: 1, name: 'Loja ' + searchTerm, category: 'Eletrônicos' },
-      ]);
+      // Fazer busca real no Supabase
+      const { produtos: produtosData, lojas: lojasData, error: searchError } = 
+        await searchService.search(searchTerm, { limit: 10 });
+
+      if (searchError) {
+        setError(searchError);
+      } else {
+        setProdutos(produtosData || []);
+        setLojas(lojasData || []);
+      }
 
       setShowResults(true);
 
@@ -92,6 +91,16 @@ function SearchSystem() {
     setSearchTerm(term);
   };
 
+  const handleProductClick = (productId) => {
+    // Navegar para página do produto
+    window.location.href = `/produto/${productId}`;
+  };
+
+  const handleStoreClick = (storeId) => {
+    // Navegar para página da loja
+    window.location.href = `/loja/${storeId}`;
+  };
+
   const handleKeyDown = (e) => {
     const total = produtos.length + lojas.length;
     
@@ -103,7 +112,12 @@ function SearchSystem() {
       setSelectedIndex(prev => (prev - 1 + total) % total);
     } else if (e.key === 'Enter' && selectedIndex >= 0) {
       e.preventDefault();
-      // Lógica para selecionar item
+      if (selectedIndex < produtos.length) {
+        handleProductClick(produtos[selectedIndex].id);
+      } else {
+        const lojaIdx = selectedIndex - produtos.length;
+        handleStoreClick(lojas[lojaIdx].id);
+      }
     }
   };
 
@@ -114,13 +128,13 @@ function SearchSystem() {
     <div className="search-system">
       <div className="search-container" ref={searchBoxRef}>
         <div className="search-input-wrapper">
-          <Search className="search-icon" size={20} />
+          {!searchTerm && <Search className="search-icon" size={20} />}
           <input
             type="text"
             placeholder="Buscar produtos ou lojas..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            onFocus={() => showResults && setShowResults(true)}
+            onFocus={() => setShowResults(true)}
             onKeyDown={handleKeyDown}
             className="search-input"
           />
@@ -140,13 +154,13 @@ function SearchSystem() {
               </div>
             )}
 
-            {error && (
+            {error && !loading && (
               <div className="error-state">
                 <p>{error}</p>
               </div>
             )}
 
-            {!loading && !hasResults && searchTerm.trim() && (
+            {!loading && !hasResults && searchTerm.trim().length >= 2 && (
               <div className="empty-state">
                 <Search size={32} />
                 <p>Nenhum resultado encontrado para "{searchTerm}"</p>
@@ -159,11 +173,22 @@ function SearchSystem() {
                   <div className="results-section">
                     <h4 className="results-title">Produtos ({produtos.length})</h4>
                     <ul className="results-list">
-                      {produtos.map((p) => (
-                        <li key={p.id} className="result-item">
+                      {produtos.map((p, idx) => (
+                        <li 
+                          key={p.id} 
+                          className={`result-item ${selectedIndex === idx ? 'selected' : ''}`}
+                          onClick={() => handleProductClick(p.id)}
+                        >
                           <div className="result-content">
                             <span className="result-name">{p.name}</span>
-                            <span className="result-category">{p.category}</span>
+                            <div className="result-meta">
+                              <span className="result-category">{p.category}</span>
+                              {p.precoMinimo > 0 && (
+                                <span className="result-price">
+                                  R$ {p.precoMinimo.toFixed(2).replace('.', ',')}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <span className="result-badge">Produto</span>
                         </li>
@@ -176,8 +201,12 @@ function SearchSystem() {
                   <div className="results-section">
                     <h4 className="results-title">Lojas ({lojas.length})</h4>
                     <ul className="results-list">
-                      {lojas.map((l) => (
-                        <li key={l.id} className="result-item">
+                      {lojas.map((l, idx) => (
+                        <li 
+                          key={l.id} 
+                          className={`result-item ${selectedIndex === produtos.length + idx ? 'selected' : ''}`}
+                          onClick={() => handleStoreClick(l.id)}
+                        >
                           <div className="result-content">
                             <span className="result-name">{l.name}</span>
                             <span className="result-category">{l.category}</span>
