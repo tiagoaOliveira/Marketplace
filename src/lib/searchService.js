@@ -21,6 +21,9 @@ export const searchService = {
 
     try {
       const searchPattern = `%${termo}%`;
+      const termoNormalizado = this._normalizarTermo(termo);
+
+      console.log('Buscando por:', termo); // Debug
 
       // Busca de PRODUTOS diretos
       const produtosPromise = supabase
@@ -45,30 +48,96 @@ export const searchService = {
         `)
         .ilike('name', searchPattern);
 
-      // Busca de LOJAS aprovadas
-      const lojasPromise = supabase
+      // Busca de LOJAS aprovadas por nome
+      const lojasNomePromise = supabase
         .from('stores')
         .select('id, name, category, description, email, phone')
         .eq('is_approved', true)
         .ilike('name', searchPattern);
 
-      // Executar ambas em paralelo
-      const [produtosResult, lojasResult] = await Promise.all([
-        produtosPromise,
-        lojasPromise
-      ]);
+      // Busca de LOJAS aprovadas por categoria
+      const lojasCategoriasPromise = supabase
+        .from('stores')
+        .select('id, name, category, description, email, phone')
+        .eq('is_approved', true)
+        .ilike('category', searchPattern);
+
+      // Busca de PRODUTOS por categoria
+      const produtosCategoriaPromise = supabase
+        .from('products')
+        .select(`
+          id,
+          name,
+          description,
+          category,
+          product_listings (
+            id,
+            price,
+            stock,
+            is_active,
+            store_id,
+            stores (
+              id,
+              name,
+              is_approved
+            )
+          )
+        `)
+        .ilike('category', searchPattern);
+
+      // Executar todas em paralelo
+      const [produtosResult, lojasNomeResult, lojasCategoriasResult, produtosCategoriaResult] = 
+        await Promise.all([
+          produtosPromise,
+          lojasNomePromise,
+          lojasCategoriasPromise,
+          produtosCategoriaPromise
+        ]);
 
       if (produtosResult.error) {
         console.error('Erro busca produtos:', produtosResult.error);
       }
-
-      if (lojasResult.error) {
-        console.error('Erro busca lojas:', lojasResult.error);
+      if (lojasNomeResult.error) {
+        console.error('Erro busca lojas por nome:', lojasNomeResult.error);
+      }
+      if (lojasCategoriasResult.error) {
+        console.error('Erro busca lojas por categoria:', lojasCategoriasResult.error);
+      }
+      if (produtosCategoriaResult.error) {
+        console.error('Erro busca produtos por categoria:', produtosCategoriaResult.error);
       }
 
+      // Combinar resultados e remover duplicatas
+      const produtosSet = new Map();
+      
+      // Adicionar produtos por nome
+      (produtosResult.data || []).forEach(p => produtosSet.set(p.id, p));
+      
+      // Adicionar produtos por categoria
+      (produtosCategoriaResult.data || []).forEach(p => {
+        if (!produtosSet.has(p.id)) {
+          produtosSet.set(p.id, p);
+        }
+      });
+
+      const lojasSet = new Map();
+      
+      // Adicionar lojas por nome
+      (lojasNomeResult.data || []).forEach(l => lojasSet.set(l.id, l));
+      
+      // Adicionar lojas por categoria
+      (lojasCategoriasResult.data || []).forEach(l => {
+        if (!lojasSet.has(l.id)) {
+          lojasSet.set(l.id, l);
+        }
+      });
+
       // Formatar resultados
-      let produtos = this._formatarProdutos(produtosResult.data || []);
-      let lojas = lojasResult.data || [];
+      let produtos = this._formatarProdutos(Array.from(produtosSet.values()));
+      let lojas = Array.from(lojasSet.values());
+
+      console.log('Produtos encontrados (raw):', produtos); // Debug
+      console.log('Lojas encontradas:', lojas); // Debug
 
       // Aplicar paginação
       produtos = produtos.slice(offset, offset + limit);
@@ -272,6 +341,16 @@ export const searchService = {
   },
 
   /**
+   * Função auxiliar para remover acentos e caracteres especiais
+   */
+  _normalizarTermo(termo) {
+    return termo
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[^\w\s]/g, ''); // Remove caracteres especiais
+  },
+    /**
    * Formatar dados de produtos com informações de preço e estoque
    */
   _formatarProdutos(produtos) {

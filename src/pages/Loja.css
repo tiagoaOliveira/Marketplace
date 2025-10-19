@@ -253,13 +253,10 @@
 }
 
 .catalog-header {
-  background-color: #F0F9FF;
-  border-bottom-color: #BAE6FD;
+  background-color: var(--neutral-50);
+  border-bottom-color: var(--neutral-200);
 }
 
-.catalog-header:hover {
-  background-color: #E0F2FE;
-}
 
 .store-products-title {
   margin: 0;
