@@ -275,7 +275,6 @@ const CarrinhoCompras = () => {
         <div className="carrinho-vazio">
           <div className="carrinho-vazio-icone">🔒</div>
           <h2>Faça login para ver seu carrinho</h2>
-          <p>Você precisa estar logado para acessar o carrinho!</p>
         </div>
       </div>
     );
@@ -317,10 +316,13 @@ const CarrinhoCompras = () => {
                         className="item-imagem"
                       />
                       <div className="item-detalhes">
-                        <h3 className="item-nome">{item.nome}</h3>
-                        <p className="item-preco">
+                        
+                        <div className='item-detalhes-header'>
+                          <h3 className="item-nome">{item.nome}</h3>
+                          <p className="item-preco">
                           R$ {item.preco.toFixed(2).replace('.', ',')}
                         </p>
+                        </div>
                         <div className="item-controles">
                           <div className="quantidade-controles">
                             <button 

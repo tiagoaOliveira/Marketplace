@@ -1,13 +1,14 @@
-// PerfilLoja.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { storesService, cartService } from '../lib/services';
 import { supabase } from '../lib/supabase';
+import { useNotification } from '../hooks/useNotification';
 import './PerfilLoja.css';
 
 const PerfilLoja = () => {
   const { storeSlug } = useParams();
   const navigate = useNavigate();
+  const { notification, showNotification } = useNotification();
   const [loja, setLoja] = useState(null);
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,11 +21,9 @@ const PerfilLoja = () => {
 
   const initialize = async () => {
     try {
-      // Obter usuário autenticado
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       setUser(currentUser);
 
-      // Buscar loja pelo slug
       const { data: stores } = await storesService.getApprovedStores();
       const lojaEncontrada = stores?.find(s => createSlug(s.name) === storeSlug);
 
@@ -35,7 +34,6 @@ const PerfilLoja = () => {
 
       setLoja(lojaEncontrada);
 
-      // Buscar produtos da loja
       const { data: produtosData } = await storesService.getStoreProducts(lojaEncontrada.id);
       setProdutos(produtosData || []);
 
@@ -75,7 +73,7 @@ const PerfilLoja = () => {
 
   const adicionarAoCarrinho = async (listing) => {
     if (!user) {
-      alert('Faça login para adicionar produtos ao carrinho');
+      showNotification('Faça login para adicionar produtos ao carrinho', 'warning');
       return;
     }
 
@@ -133,7 +131,12 @@ const PerfilLoja = () => {
 
   return (
     <div className="perfil-loja-container">
-      {/* Header da Loja */}
+      {notification && (
+        <div className={`notification notification-${notification.type}`}>
+          {notification.message}
+        </div>
+      )}
+      
       <div className="loja-header">
         <button className="btn-voltar" onClick={handleVoltar}>
           ←
@@ -154,7 +157,6 @@ const PerfilLoja = () => {
         </div>
       </div>
 
-      {/* Produtos da Loja */}
       <div className="loja-produtos-section">        
         {produtos.length === 0 ? (
           <p className="sem-produtos">Esta loja ainda não possui produtos cadastrados.</p>

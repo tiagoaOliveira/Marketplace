@@ -166,9 +166,53 @@
   color: var(--warning);
 }
 
-@media (max-width: 768px) {
-  .perfil-loja-container {
-    padding: var(--space-4);
-  }
+/* Notificação */
+.notification {
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 10px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.3s ease-out;
+  z-index: 9999;
+  max-width: 100%;
+}
 
+.notification-warning {
+  background-color: #fff3cd;
+  color: #664d03;
+  border-left: 4px solid #ffc107;
+}
+
+.notification-error {
+  background-color: #f8d7da;
+  color: #842029;
+  border-left: 4px solid #dc3545;
+}
+
+.notification-success {
+  background-color: #d1e7dd;
+  color: #0f5132;
+  border-left: 4px solid #198754;
+}
+
+.notification-info {
+  background-color: #cfe2ff;
+  color: #084298;
+  border-left: 4px solid #0d6efd;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateX(-50%) translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
 }

@@ -243,7 +243,7 @@
 
 .pedido-itens {
     background-color: var(--white);
-    padding: var(--space-4);
+    padding: 0 var(--space-4) var(--space-4) var(--space-4);
     border-radius: 8px;
 }
 
@@ -276,6 +276,48 @@
 .item-loja {
     font-size: 12px;
     color: var(--neutral-muted);
+}
+
+.item-loja-clicavel {
+    cursor: pointer;
+    color: var(--primary);
+    transition: color 0.2s ease;
+}
+
+.item-loja-clicavel:hover {
+    color: #094c3a;
+}
+
+.item-status-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.item-status {
+    font-size: 11px;
+    font-weight: bold;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.item-status-pendente {
+    background-color: #FFA500;
+}
+
+.item-status-entregue {
+    background-color: #28A745;
+}
+
+.item-status-cancelado {
+    background-color: #DC3545;
+}
+
+.item-status-data {
+    font-size: 11px;
+    color: #999;
 }
 
 .item-dados {
@@ -350,7 +392,7 @@
     }
 
     .pedido-expandido {
-        padding: var(--space-4);
+        padding: 0 var(--space-4);
     }
 
     .item-dados {

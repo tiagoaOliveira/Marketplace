@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { Search, User, Heart, ShoppingCart } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import './Header.css'
-//import Carrossel from './Carrossel'
+import SearchSystem from './SearchSystem'
 import Produtos from './Produtos'
 import Categorias from './Categorias'
-import SearchSystem from './SearchSystem';
-
 
 function Header() {
   const [categoriaSelecionada, setCategoriaSelecionada] = useState('Todos');
+  const [produtoSelecionado, setProdutoSelecionado] = useState(null);
+  const [modalAberto, setModalAberto] = useState(false);
 
   const handleCategoriaSelect = (categoria) => {
     setCategoriaSelecionada(categoria);
@@ -17,6 +17,47 @@ function Header() {
 
   const handleMostrarTodos = () => {
     setCategoriaSelecionada('Todos');
+  };
+
+  // Callback quando um produto é clicado na busca
+  const handleProductSelect = (produto) => {
+    // Transformar dados da busca para o formato esperado pelo modal
+    const produtoFormatado = {
+      id: produto.listings?.[0]?.id || produto.id, // ID do listing (UUID)
+      productId: produto.id, // ID do produto
+      nome: produto.name,
+      descricao: produto.description,
+      preco: produto.precoMinimo,
+      stock: produto.totalEstoque,
+      categoria: produto.category,
+      subcategoria: produto.subcategory,
+      loja: produto.listings?.[0]?.stores?.name || 'Loja',
+      imagem: `https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&h=300&fit=crop&crop=center`
+    };
+    
+    setProdutoSelecionado(produtoFormatado);
+    setModalAberto(true);
+  };
+
+  // Callback quando uma loja é clicada na busca
+  const handleStoreSelect = (loja) => {
+    // Navegar para a loja
+    const createSlug = (name) => {
+      return name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    };
+    
+    const slug = createSlug(loja.name);
+    window.location.href = `/loja/${slug}`;
+  };
+
+  const fecharModal = () => {
+    setModalAberto(false);
+    setProdutoSelecionado(null);
   };
 
   return (
@@ -39,9 +80,10 @@ function Header() {
 
       <div className="header-search">
         <div className="search-wrapper">
-          <Search className="search-icon" size={26} />
-          <SearchSystem/>
-
+          <SearchSystem 
+            onProductSelect={handleProductSelect}
+            onStoreSelect={handleStoreSelect}
+          />
         </div>
       </div>
 
@@ -52,6 +94,9 @@ function Header() {
 
       <Produtos
         categoriaFiltro={categoriaSelecionada === 'Todos' ? null : categoriaSelecionada}
+        produtoSelecionado={produtoSelecionado}
+        modalAberto={modalAberto}
+        onFecharModal={fecharModal}
       />
     </div>
   )

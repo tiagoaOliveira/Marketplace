@@ -1,9 +1,11 @@
 // src/pages/Pedidos.jsx
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import './Pedidos.css'
 
 const Pedidos = ({ user, userProfile }) => {
+    const navigate = useNavigate()
     const [pedidos, setPedidos] = useState([])
     const [loading, setLoading] = useState(true)
     const [filtro, setFiltro] = useState('todos')
@@ -190,6 +192,20 @@ const Pedidos = ({ user, userProfile }) => {
         })
     }
 
+    const createSlug = (name) => {
+        return name
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+    }
+
+    const irParaLoja = (nomeLoja) => {
+        const slug = createSlug(nomeLoja)
+        navigate(`/loja/${slug}`)
+    }
+
     if (loading) {
         return <div className="pedidos-loading">Carregando pedidos...</div>
     }
@@ -286,22 +302,20 @@ const Pedidos = ({ user, userProfile }) => {
                                                 <div key={item.id} className="item-expandido">
                                                     <div className="item-info">
                                                         <span className="item-nome">{item.product_name}</span>
-                                                        <span className="item-loja">{item.store_name}</span>
-                                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                                                        <span 
+                                                            className="item-loja item-loja-clicavel"
+                                                            onClick={() => irParaLoja(item.store_name)}
+                                                        >
+                                                            {item.store_name}
+                                                        </span>
+                                                        <div className="item-status-container">
                                                             <span 
-                                                                style={{ 
-                                                                    fontSize: '11px',
-                                                                    fontWeight: 'bold',
-                                                                    backgroundColor: getStatusColor(item.status),
-                                                                    color: 'white',
-                                                                    padding: '2px 8px',
-                                                                    borderRadius: '4px'
-                                                                }}
+                                                                className={`item-status item-status-${item.status}`}
                                                             >
                                                                 {item.status.toUpperCase()}
                                                             </span>
                                                             {item.status_updated_at && (
-                                                                <span style={{ fontSize: '11px', color: '#999' }}>
+                                                                <span className="item-status-data">
                                                                     {new Date(item.status_updated_at).toLocaleDateString('pt-BR')}
                                                                 </span>
                                                             )}
@@ -320,7 +334,7 @@ const Pedidos = ({ user, userProfile }) => {
                                                                 className="btn-status-entregue"
                                                                 onClick={() => atualizarStatusItem(item.id, 'entregue')}
                                                             >
-                                                                ✓ Entregue
+                                                                ✔ Entregue
                                                             </button>
                                                             <button
                                                                 className="btn-status-cancelado"

@@ -2,10 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listingsService, cartService } from '../lib/services';
 import { auth } from '../lib/supabase';
+import { useNotification } from '../hooks/useNotification';
 import './produtos.css';
 
-const ProdutosShowcase = ({ categoriaFiltro }) => {
+const ProdutosShowcase = ({ 
+  categoriaFiltro,
+  produtoSelecionado: produtoSelecionadoExterno,
+  modalAberto: modalAbertoExterno,
+  onFecharModal: onFecharModalExterno
+}) => {
   const navigate = useNavigate();
+  const { notification, showNotification } = useNotification();
   const [produtos, setProdutos] = useState([]);
   const [produtosFiltrados, setProdutosFiltrados] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,6 +20,15 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
   const [quantidades, setQuantidades] = useState({});
   const [modalAberto, setModalAberto] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
+
+  useEffect(() => {
+    if (modalAbertoExterno !== undefined) {
+      setModalAberto(modalAbertoExterno);
+    }
+    if (produtoSelecionadoExterno) {
+      setProdutoSelecionado(produtoSelecionadoExterno);
+    }
+  }, [modalAbertoExterno, produtoSelecionadoExterno]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -111,7 +127,7 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
 
   const adicionarAoCarrinho = async (listing) => {
     if (!user) {
-      alert('Faça login para adicionar produtos ao carrinho');
+      showNotification('Faça login para adicionar produtos ao carrinho', 'warning');
       return;
     }
 
@@ -130,8 +146,7 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
       const { error: addError } = await cartService.addToCart(
         cart.id,
         listing.id,
-        1,
-        listing.preco
+        1
       );
 
       if (addError) {
@@ -191,6 +206,9 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
   const fecharModal = () => {
     setModalAberto(false);
     setProdutoSelecionado(null);
+    if (onFecharModalExterno) {
+      onFecharModalExterno();
+    }
   };
 
   const createSlug = (name) => {
@@ -239,7 +257,13 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
   }
 
   return (
-    <div className="produtos-container">      
+    <div className="produtos-container">
+      {notification && (
+        <div className={`notification notification-${notification.type}`}>
+          {notification.message}
+        </div>
+      )}
+      
       <div className="produtos-grid">
         {produtosFiltrados.map(produto => (
           <div 

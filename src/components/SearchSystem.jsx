@@ -3,7 +3,7 @@ import { Search, X, Loader } from 'lucide-react';
 import { searchService } from '../lib/searchService';
 import './SearchSystem.css';
 
-function SearchSystem() {
+function SearchSystem({ onProductSelect, onStoreSelect }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [produtos, setProdutos] = useState([]);
   const [lojas, setLojas] = useState([]);
@@ -91,14 +91,20 @@ function SearchSystem() {
     setSearchTerm(term);
   };
 
-  const handleProductClick = (productId) => {
-    // Navegar para página do produto
-    window.location.href = `/produto/${productId}`;
+  const handleProductClick = (produto) => {
+    if (onProductSelect) {
+      onProductSelect(produto);
+    }
+    setShowResults(false);
+    setSearchTerm('');
   };
 
-  const handleStoreClick = (storeId) => {
-    // Navegar para página da loja
-    window.location.href = `/loja/${storeId}`;
+  const handleStoreClick = (loja) => {
+    if (onStoreSelect) {
+      onStoreSelect(loja);
+    }
+    setShowResults(false);
+    setSearchTerm('');
   };
 
   const handleKeyDown = (e) => {
@@ -113,10 +119,10 @@ function SearchSystem() {
     } else if (e.key === 'Enter' && selectedIndex >= 0) {
       e.preventDefault();
       if (selectedIndex < produtos.length) {
-        handleProductClick(produtos[selectedIndex].id);
+        handleProductClick(produtos[selectedIndex]);
       } else {
         const lojaIdx = selectedIndex - produtos.length;
-        handleStoreClick(lojas[lojaIdx].id);
+        handleStoreClick(lojas[lojaIdx]);
       }
     }
   };
@@ -177,7 +183,7 @@ function SearchSystem() {
                         <li 
                           key={p.id} 
                           className={`result-item ${selectedIndex === idx ? 'selected' : ''}`}
-                          onClick={() => handleProductClick(p.id)}
+                          onClick={() => handleProductClick(p)}
                         >
                           <div className="result-content">
                             <span className="result-name">{p.name}</span>
@@ -205,7 +211,7 @@ function SearchSystem() {
                         <li 
                           key={l.id} 
                           className={`result-item ${selectedIndex === produtos.length + idx ? 'selected' : ''}`}
-                          onClick={() => handleStoreClick(l.id)}
+                          onClick={() => handleStoreClick(l)}
                         >
                           <div className="result-content">
                             <span className="result-name">{l.name}</span>
