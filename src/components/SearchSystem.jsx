@@ -1,134 +1,48 @@
-import { useEffect, useState, useRef } from 'react';
 import { Search, X, Loader } from 'lucide-react';
-import { searchService } from '../lib/searchService';
+import { useSearch } from '../hooks/useSearch';
 import './SearchSystem.css';
 
 function SearchSystem({ onProductSelect, onStoreSelect }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [produtos, setProdutos] = useState([]);
-  const [lojas, setLojas] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [showResults, setShowResults] = useState(false);
-  const [recentSearches, setRecentSearches] = useState([]);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
-  const searchBoxRef = useRef(null);
-
-  // Carregar buscas recentes
-  useEffect(() => {
-    const saved = JSON.parse(sessionStorage.getItem('recentSearches') || '[]');
-    setRecentSearches(saved);
-  }, []);
-
-  // Debounce para a busca
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchTerm.trim().length >= 2) {
-        performSearch();
-      } else {
-        setProdutos([]);
-        setLojas([]);
-        setShowResults(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  // Fechar resultados ao clicar fora
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target)) {
-        setShowResults(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const performSearch = async () => {
-    if (searchTerm.trim().length < 2) return;
-
-    setLoading(true);
-    setError('');
-    setSelectedIndex(-1);
-
-    try {
-      // Fazer busca real no Supabase
-      const { produtos: produtosData, lojas: lojasData, error: searchError } = 
-        await searchService.search(searchTerm, { limit: 10 });
-
-      if (searchError) {
-        setError(searchError);
-      } else {
-        setProdutos(produtosData || []);
-        setLojas(lojasData || []);
-      }
-
-      setShowResults(true);
-
-      // Salvar busca recente
-      const updated = [searchTerm, ...recentSearches.filter(s => s !== searchTerm)].slice(0, 5);
-      setRecentSearches(updated);
-      sessionStorage.setItem('recentSearches', JSON.stringify(updated));
-    } catch (err) {
-      setError('Erro ao buscar. Tente novamente.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleClear = () => {
-    setSearchTerm('');
-    setProdutos([]);
-    setLojas([]);
-    setShowResults(false);
-  };
-
-  const handleSearchClick = (term) => {
-    setSearchTerm(term);
-  };
+  const {
+    searchTerm,
+    produtos,
+    lojas,
+    loading,
+    error,
+    showResults,
+    recentSearches,
+    selectedIndex,
+    searchBoxRef,
+    setSearchTerm,
+    setShowResults,
+    handleClear,
+    handleSearchClick,
+    handleKeyDown,
+    selectItem,
+    totalResults,
+    hasResults
+  } = useSearch({ limit: 10 });
 
   const handleProductClick = (produto) => {
-    if (onProductSelect) {
-      onProductSelect(produto);
-    }
-    setShowResults(false);
-    setSearchTerm('');
+    selectItem('produto', produto);
+    onProductSelect?.(produto);
   };
 
   const handleStoreClick = (loja) => {
-    if (onStoreSelect) {
-      onStoreSelect(loja);
-    }
-    setShowResults(false);
-    setSearchTerm('');
+    selectItem('loja', loja);
+    onStoreSelect?.(loja);
   };
 
-  const handleKeyDown = (e) => {
-    const total = produtos.length + lojas.length;
-    
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSelectedIndex(prev => (prev + 1) % total);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSelectedIndex(prev => (prev - 1 + total) % total);
-    } else if (e.key === 'Enter' && selectedIndex >= 0) {
-      e.preventDefault();
-      if (selectedIndex < produtos.length) {
-        handleProductClick(produtos[selectedIndex]);
+  const onKeyDown = (e) => {
+    const selected = handleKeyDown(e);
+    if (selected) {
+      if (selected.type === 'produto') {
+        handleProductClick(selected.data);
       } else {
-        const lojaIdx = selectedIndex - produtos.length;
-        handleStoreClick(lojas[lojaIdx]);
+        handleStoreClick(selected.data);
       }
     }
   };
-
-  const totalResults = produtos.length + lojas.length;
-  const hasResults = totalResults > 0;
 
   return (
     <div className="search-system">
@@ -141,7 +55,7 @@ function SearchSystem({ onProductSelect, onStoreSelect }) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onFocus={() => setShowResults(true)}
-            onKeyDown={handleKeyDown}
+            onKeyDown={onKeyDown}
             className="search-input"
           />
           {searchTerm && (

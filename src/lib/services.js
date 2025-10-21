@@ -1,11 +1,8 @@
 // src/lib/services.js
 import { supabase } from './supabase'
 
-// ========================
-// Serviços de Produtos
-// ========================
+
 export const productsService = {
-  // Listar todos os produtos ativos
   async getProducts() {
     const { data, error } = await supabase
       .from('products')
@@ -50,6 +47,15 @@ export const productsService = {
       .from('products')
       .insert(productData)
       .select()
+
+    return { data, error }
+  },
+  async searchProducts(searchTerm, limit = 50) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .or(`name.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
+      .limit(limit)
 
     return { data, error }
   }

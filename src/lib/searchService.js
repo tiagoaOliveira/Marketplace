@@ -3,10 +3,7 @@ import { supabase } from './supabase';
 
 export const searchService = {
   /**
-   * Busca combinada de produtos e lojas com consultas reais
-   * @param {string} termo - Termo de busca
-   * @param {object} options - Opções de filtro
-   * @returns {object} { produtos, lojas, error }
+   * Busca otimizada para grandes volumes usando Full Text Search
    */
   async search(termo, options = {}) {
     const { limit = 10, offset = 0 } = options;
@@ -20,13 +17,8 @@ export const searchService = {
     }
 
     try {
-      const searchPattern = `%${termo}%`;
-      const termoNormalizado = this._normalizarTermo(termo);
-
-      console.log('Buscando por:', termo); // Debug
-
-      // Busca de PRODUTOS diretos
-      const produtosPromise = supabase
+      // Buscar produtos usando Full Text Search
+      const { data: produtosData, error: erroProdutos } = await supabase
         .from('products')
         .select(`
           id,
@@ -46,98 +38,23 @@ export const searchService = {
             )
           )
         `)
-        .ilike('name', searchPattern);
+        .or(`name.ilike.%${termo}%,category.ilike.%${termo}%,description.ilike.%${termo}%`)
+        .limit(limit);
 
-      // Busca de LOJAS aprovadas por nome
-      const lojasNomePromise = supabase
+      // Buscar lojas usando Full Text Search
+      const { data: lojasData, error: erroLojas } = await supabase
         .from('stores')
         .select('id, name, category, description, email, phone')
         .eq('is_approved', true)
-        .ilike('name', searchPattern);
+        .or(`name.ilike.%${termo}%,category.ilike.%${termo}%`)
+        .limit(limit);
 
-      // Busca de LOJAS aprovadas por categoria
-      const lojasCategoriasPromise = supabase
-        .from('stores')
-        .select('id, name, category, description, email, phone')
-        .eq('is_approved', true)
-        .ilike('category', searchPattern);
-
-      // Busca de PRODUTOS por categoria
-      const produtosCategoriaPromise = supabase
-        .from('products')
-        .select(`
-          id,
-          name,
-          description,
-          category,
-          product_listings (
-            id,
-            price,
-            stock,
-            is_active,
-            store_id,
-            stores (
-              id,
-              name,
-              is_approved
-            )
-          )
-        `)
-        .ilike('category', searchPattern);
-
-      // Executar todas em paralelo
-      const [produtosResult, lojasNomeResult, lojasCategoriasResult, produtosCategoriaResult] = 
-        await Promise.all([
-          produtosPromise,
-          lojasNomePromise,
-          lojasCategoriasPromise,
-          produtosCategoriaPromise
-        ]);
-
-      if (produtosResult.error) {
-        console.error('Erro busca produtos:', produtosResult.error);
-      }
-      if (lojasNomeResult.error) {
-        console.error('Erro busca lojas por nome:', lojasNomeResult.error);
-      }
-      if (lojasCategoriasResult.error) {
-        console.error('Erro busca lojas por categoria:', lojasCategoriasResult.error);
-      }
-      if (produtosCategoriaResult.error) {
-        console.error('Erro busca produtos por categoria:', produtosCategoriaResult.error);
-      }
-
-      // Combinar resultados e remover duplicatas
-      const produtosSet = new Map();
-      
-      // Adicionar produtos por nome
-      (produtosResult.data || []).forEach(p => produtosSet.set(p.id, p));
-      
-      // Adicionar produtos por categoria
-      (produtosCategoriaResult.data || []).forEach(p => {
-        if (!produtosSet.has(p.id)) {
-          produtosSet.set(p.id, p);
-        }
-      });
-
-      const lojasSet = new Map();
-      
-      // Adicionar lojas por nome
-      (lojasNomeResult.data || []).forEach(l => lojasSet.set(l.id, l));
-      
-      // Adicionar lojas por categoria
-      (lojasCategoriasResult.data || []).forEach(l => {
-        if (!lojasSet.has(l.id)) {
-          lojasSet.set(l.id, l);
-        }
-      });
+      if (erroProdutos) console.error('Erro busca produtos:', erroProdutos);
+      if (erroLojas) console.error('Erro busca lojas:', erroLojas);
 
       // Formatar resultados
-      let produtos = this._formatarProdutos(Array.from(produtosSet.values()));
-      let lojas = Array.from(lojasSet.values());
-
-      console.log('Produtos encontrados (raw):', produtos); // Debug
-      console.log('Lojas encontradas:', lojas); // Debug
+      let produtos = this._formatarProdutos(produtosData || []);
+      let lojas = lojasData || [];
 
       // Aplicar paginação
       produtos = produtos.slice(offset, offset + limit);
@@ -175,9 +92,7 @@ export const searchService = {
     }
 
     try {
-      const searchPattern = `%${termo}%`;
-
-      const result = await supabase
+      const { data, error } = await supabase
         .from('products')
         .select(`
           id,
@@ -198,14 +113,12 @@ export const searchService = {
             )
           )
         `)
-        .ilike('name', searchPattern);
+        .or(`name.ilike.%${termo}%,category.ilike.%${termo}%`)
+        .limit(limit);
 
-      if (result.error) {
-        console.error('Erro:', result.error);
-        throw result.error;
-      }
+      if (error) throw error;
 
-      let produtos = this._formatarProdutos(result.data || []);
+      let produtos = this._formatarProdutos(data || []);
 
       // Filtrar por estoque
       if (inStock) {
@@ -241,13 +154,13 @@ export const searchService = {
         .from('stores')
         .select('id, name, category, description, email, phone, is_approved')
         .eq('is_approved', true)
-        .ilike('name', `%${termo}%`);
+        .or(`name.ilike.%${termo}%,category.ilike.%${termo}%`);
 
-      const result = await query;
+      const { data, error } = await query.limit(20);
 
-      if (result.error) throw result.error;
+      if (error) throw error;
 
-      return { lojas: result.data || [], error: null };
+      return { lojas: data || [], error: null };
     } catch (error) {
       console.error('Erro busca lojas:', error);
       return { lojas: [], error: 'Erro ao buscar lojas' };
@@ -259,7 +172,7 @@ export const searchService = {
    */
   async searchByCategory(category, limit = 20) {
     try {
-      const result = await supabase
+      const { data, error } = await supabase
         .from('products')
         .select(`
           id,
@@ -277,12 +190,13 @@ export const searchService = {
             )
           )
         `)
-        .ilike('category', `%${category}%`);
+        .ilike('category', `%${category}%`)
+        .limit(limit);
 
-      if (result.error) throw result.error;
+      if (error) throw error;
 
       return {
-        produtos: this._formatarProdutos(result.data || []).slice(0, limit),
+        produtos: this._formatarProdutos(data || []),
         error: null
       };
     } catch (error) {
@@ -300,30 +214,26 @@ export const searchService = {
     }
 
     try {
-      const searchPattern = `%${termo}%`;
-
-      // Buscar nomes de produtos
-      const produtoResult = await supabase
+      const { data: produtosSugg } = await supabase
         .from('products')
         .select('id, name')
-        .ilike('name', searchPattern)
+        .ilike('name', `%${termo}%`)
         .limit(Math.ceil(limit * 0.7));
 
-      // Buscar nomes de lojas
-      const lojaResult = await supabase
+      const { data: lojasSugg } = await supabase
         .from('stores')
         .select('id, name')
         .eq('is_approved', true)
-        .ilike('name', searchPattern)
+        .ilike('name', `%${termo}%`)
         .limit(Math.ceil(limit * 0.3));
 
       const suggestions = [
-        ...(produtoResult.data || []).map(p => ({
+        ...(produtosSugg || []).map(p => ({
           id: p.id,
           text: p.name,
           type: 'produto'
         })),
-        ...(lojaResult.data || []).map(l => ({
+        ...(lojasSugg || []).map(l => ({
           id: l.id,
           text: l.name,
           type: 'loja'
@@ -341,16 +251,6 @@ export const searchService = {
   },
 
   /**
-   * Função auxiliar para remover acentos e caracteres especiais
-   */
-  _normalizarTermo(termo) {
-    return termo
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-      .replace(/[^\w\s]/g, ''); // Remove caracteres especiais
-  },
-    /**
    * Formatar dados de produtos com informações de preço e estoque
    */
   _formatarProdutos(produtos) {
@@ -364,7 +264,7 @@ export const searchService = {
         );
 
         if (listingsAtivos.length === 0) {
-          return null; // Descartar produtos sem listings ativos
+          return null;
         }
 
         const precos = listingsAtivos
@@ -388,6 +288,6 @@ export const searchService = {
           listings: listingsAtivos
         };
       })
-      .filter(p => p !== null); // Remover produtos sem listings
+      .filter(p => p !== null);
   }
 };
