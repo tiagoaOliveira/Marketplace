@@ -349,7 +349,7 @@ const Pedidos = ({ user, userProfile }) => {
                                         </div>
 
                                         <div className="pedido-total-expandido">
-                                            <span>{visao === 'vendedor' ? 'Total dos seus produtos:' : 'Total do Pedido:'}</span>
+                                            <span>{visao === 'vendedor' ? 'Total da compra:' : 'Total do Pedido:'}</span>
                                             <span>
                                                 R$ {pedido.order_items?.reduce((sum, item) => sum + parseFloat(item.subtotal), 0).toFixed(2).replace('.', ',')}
                                             </span>

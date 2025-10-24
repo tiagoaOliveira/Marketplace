@@ -19,12 +19,10 @@ function Header() {
     setCategoriaSelecionada('Todos');
   };
 
-  // Callback quando um produto é clicado na busca
   const handleProductSelect = (produto) => {
-    // Transformar dados da busca para o formato esperado pelo modal
     const produtoFormatado = {
-      id: produto.listings?.[0]?.id || produto.id, // ID do listing (UUID)
-      productId: produto.id, // ID do produto
+      id: produto.listings?.[0]?.id || produto.id, 
+      productId: produto.id, 
       nome: produto.name,
       descricao: produto.description,
       preco: produto.precoMinimo,
