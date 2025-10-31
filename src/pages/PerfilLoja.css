@@ -189,17 +189,6 @@
   padding: 0 1.5rem;
 }
 
-.produto-descricao {
-  color: #64748b;
-  font-size: 14px;
-  margin: 0 0 1rem 0;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  padding: 0 1.5rem;
-}
-
 .produto-preco {
   font-size: 26px;
   font-weight: 800;
@@ -421,9 +410,5 @@
 
   .produto-preco {
     font-size: 20px;
-  }
-
-  .produto-descricao {
-    font-size: 13px;
   }
 }

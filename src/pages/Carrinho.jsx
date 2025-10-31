@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cartService } from '../lib/services';
 import { auth, supabase } from '../lib/supabase';
+import { useProductModal } from '../hooks/useProductModal.jsx';
 import './Carrinho.css';
+import { RxArrowLeft } from "react-icons/rx";
+import { FaTrash } from "react-icons/fa";
 
 const CarrinhoCompras = () => {
+  const navigate = useNavigate();
+  const { abrirModal, ProductModal } = useProductModal();
+  
   const [itensCarrinho, setItensCarrinho] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
@@ -13,8 +20,6 @@ const CarrinhoCompras = () => {
   const [modalErro, setModalErro] = useState(false);
   const [mensagemErro, setMensagemErro] = useState('');
   const [orderId, setOrderId] = useState(null);
-  const [modalAberto, setModalAberto] = useState(false);
-  const [produtoSelecionado, setProdutoSelecionado] = useState(null);
 
   useEffect(() => {
     const initializeCart = async () => {
@@ -59,7 +64,7 @@ const CarrinhoCompras = () => {
           stock: item.product_listings.stock,
           storeName: item.product_listings.stores.name,
           storeId: item.product_listings.store_id,
-          imagem: item.product_listings.products.image_url || `https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&h=300&fit=crop&crop=center`
+          imagem: item.product_listings.products.images?.[0]
         }));
         setItensCarrinho(itens);
       }
@@ -208,22 +213,25 @@ const CarrinhoCompras = () => {
     window.location.href = '/';
   };
 
-  const abrirModal = (item) => {
-    setProdutoSelecionado({
-      id: item.productListingId,
-      nome: item.nome,
-      descricao: item.descricao || 'Descrição não disponível',
-      preco: item.preco,
-      stock: item.stock,
-      storeName: item.storeName,
-      imagem: item.imagem
-    });
-    setModalAberto(true);
+  const handleItemClick = (e, item) => {
+    if (e.target.closest('.item-controles') || e.target.closest('.btn-remover')) {
+      return;
+    }
+    abrirModal(item);
   };
 
-  const fecharModal = () => {
-    setModalAberto(false);
-    setProdutoSelecionado(null);
+  const createSlug = (name) => {
+    return name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  const irParaLoja = (nomeLoja) => {
+    const slug = createSlug(nomeLoja);
+    navigate(`/loja/${slug}`);
   };
 
   const agruparPorLoja = () => {
@@ -240,23 +248,16 @@ const CarrinhoCompras = () => {
     return agrupado;
   };
 
-  const handleItemClick = (e, item) => {
-    if (e.target.closest('.item-controles') || e.target.closest('.btn-remover')) {
-      return;
-    }
-    abrirModal(item);
-  };
-
   if (loading) {
     return (
       <div className="carrinho-container">
         <div className="carrinho-header">
           <button className="btn-voltar" onClick={handleVoltar}>
-            ←
+            <RxArrowLeft />
           </button>
           <h1>Carrinho de Compras</h1>
         </div>
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
+        <div>
           <p>Carregando carrinho...</p>
         </div>
       </div>
@@ -268,7 +269,7 @@ const CarrinhoCompras = () => {
       <div className="carrinho-container">
         <div className="carrinho-header">
           <button className="btn-voltar" onClick={handleVoltar}>
-            ←
+            <RxArrowLeft />
           </button>
           <h1>Carrinho de Compras</h1>
         </div>
@@ -284,7 +285,7 @@ const CarrinhoCompras = () => {
     <div className="carrinho-container">
       <div className="carrinho-header">
         <button className="btn-voltar" onClick={handleVoltar}>
-          ←
+          <RxArrowLeft />
         </button>
         <h1>Carrinho de Compras</h1>
       </div>
@@ -301,7 +302,7 @@ const CarrinhoCompras = () => {
             {Object.entries(agruparPorLoja()).map(([storeId, { storeName, items }]) => (
               <div key={storeId} className="loja-grupo">
                 <div className="loja-cabecalho">
-                  <h2 className="loja-nome">🪴 {storeName}</h2>
+                  <h2 className="loja-nome">🏪 {storeName}</h2>
                 </div>
                 <div className="loja-produtos">
                   {items.map(item => (
@@ -344,7 +345,7 @@ const CarrinhoCompras = () => {
                             className="btn-remover"
                             onClick={() => removerItem(item.id)}
                           >
-                            🗑️
+                            <FaTrash />
                           </button>
                         </div>
                       </div>
@@ -382,43 +383,11 @@ const CarrinhoCompras = () => {
         </div>
       )}
 
-      {/* Modal do Produto */}
-      {modalAberto && produtoSelecionado && (
-        <div className="modal-overlay" onClick={fecharModal}>
-          <div className="modal-content-products" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-fechar" onClick={fecharModal}>×</button>
-            
-            <div className="modal-body">
-              <div className="modal-imagem">
-                <img 
-                  src={produtoSelecionado.imagem} 
-                  alt={produtoSelecionado.nome}
-                />
-              </div>
-              
-              <div className="modal-info">
-                <h2 className="modal-titulo">{produtoSelecionado.nome}</h2>
-                
-                <p className="modal-descricao">
-                  {produtoSelecionado.descricao}
-                </p>
-                
-                <p className="modal-preco">
-                  R$ {produtoSelecionado.preco.toFixed(2).replace('.', ',')}
-                </p>
-                
-                <p className="modal-loja">
-                  Vendido por: <strong>{produtoSelecionado.storeName}</strong>
-                </p>
-                
-                {produtoSelecionado.stock === 0 && (
-                  <p className="produto-sem-estoque">Sem estoque</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal do Produto usando o hook */}
+      <ProductModal 
+        showControls={false}
+        onStoreClick={irParaLoja}
+      />
 
       {/* Modal de Sucesso */}
       {modalSucesso && (

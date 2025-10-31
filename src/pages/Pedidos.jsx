@@ -263,10 +263,11 @@ const Pedidos = ({ user, userProfile }) => {
 
                                     <div className="pedido-info">
                                         <h3>Pedido #{pedido.id.slice(0, 6)}
-                                            <p className="pedido-data">
+                                            
+                                        </h3>
+                                        <p className="pedido-data">
                                                 {formatarData(pedido.created_at)}
                                             </p>
-                                        </h3>
                                     </div>
 
                                     <div className="pedido-acoes">

@@ -21,8 +21,8 @@ function Header() {
 
   const handleProductSelect = (produto) => {
     const produtoFormatado = {
-      id: produto.listings?.[0]?.id || produto.id, 
-      productId: produto.id, 
+      id: produto.listings?.[0]?.id || produto.id,
+      productId: produto.id,
       nome: produto.name,
       descricao: produto.description,
       preco: produto.precoMinimo,
@@ -30,9 +30,9 @@ function Header() {
       categoria: produto.category,
       subcategoria: produto.subcategory,
       loja: produto.listings?.[0]?.stores?.name || 'Loja',
-      imagem: `https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&h=300&fit=crop&crop=center`
+      imagem: produto.images?.[0]
     };
-    
+
     setProdutoSelecionado(produtoFormatado);
     setModalAberto(true);
   };
@@ -48,7 +48,7 @@ function Header() {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
     };
-    
+
     const slug = createSlug(loja.name);
     window.location.href = `/loja/${slug}`;
   };
@@ -78,7 +78,7 @@ function Header() {
 
       <div className="header-search">
         <div className="search-wrapper">
-          <SearchSystem 
+          <SearchSystem
             onProductSelect={handleProductSelect}
             onStoreSelect={handleStoreSelect}
           />

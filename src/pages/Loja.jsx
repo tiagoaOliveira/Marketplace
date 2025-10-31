@@ -6,6 +6,7 @@ import { storesService, productsService } from '../lib/services';
 import { useSearch } from '../hooks/useSearch';
 import { LiaEdit } from "react-icons/lia";
 import { X } from 'lucide-react';
+import { RxArrowLeft } from "react-icons/rx";
 import './Loja.css';
 
 const Stores = () => {
@@ -280,7 +281,7 @@ const Stores = () => {
     return (
       <div className="stores-container">
         <div className="stores-header">
-          <button className="btn-voltar" onClick={handleVoltar}>←</button>
+          <button className="btn-voltar" onClick={handleVoltar}><RxArrowLeft /></button>
           <h1>Minha Loja</h1>
         </div>
         <div className="auth-required"><p>Você precisa estar logado para gerenciar lojas.</p></div>
@@ -292,7 +293,7 @@ const Stores = () => {
     return (
       <div className="stores-container">
         <div className="stores-header">
-          <button className="btn-voltar" onClick={handleVoltar}>←</button>
+          <button className="btn-voltar" onClick={handleVoltar}><RxArrowLeft /></button>
           <h1>Minha Loja</h1>
         </div>
         <div className="loading-message">Carregando lojas...</div>
@@ -303,7 +304,7 @@ const Stores = () => {
   return (
     <div className="stores-container">
       <div className="stores-header">
-        <button className="btn-voltar" onClick={handleVoltar}>←</button>
+        <button className="btn-voltar" onClick={handleVoltar}><RxArrowLeft /></button>
         <h1>{editingStore ? 'Editar Loja' : creatingStore ? 'Nova Loja' : 'Minha Loja'}</h1>
       </div>
 
@@ -398,7 +399,7 @@ const Stores = () => {
       )}
 
       {editingProduct && (
-        <div className="modal-overlay" onClick={() => setEditingProduct(null)}>
+        <div className="modal-overlay-loja" onClick={() => setEditingProduct(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Editar Produto</h3>
@@ -429,7 +430,7 @@ const Stores = () => {
       )}
 
       {addingProduct && (
-        <div className="modal-overlay" onClick={() => setAddingProduct(null)}>
+        <div className="modal-overlay-loja" onClick={() => setAddingProduct(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Adicionar Produto</h3>
@@ -542,8 +543,11 @@ const Stores = () => {
                                     {productDescription && <p className="product-description">{productDescription}</p>}
                                   </div>
                                   <div className="product-details">
-                                    <span className="product-price">R$ {priceFormatted}</span>
+                                    <div className='product-bottom'>
+                                      <span className="product-price">R$ {priceFormatted}</span>
                                     <span className="product-stock">Estoque: {listing.stock ?? '—'}</span>
+                                    </div>
+                                    
                                     <div className="product-actions">
                                       <button className="btn-edit-product" onClick={() => handleEditProduct(listing)}>Editar</button>
                                       <button className="btn-delete-product" onClick={() => handleDeleteProduct(listing)}>Excluir</button>

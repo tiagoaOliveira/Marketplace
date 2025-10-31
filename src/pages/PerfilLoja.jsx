@@ -3,12 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { storesService, cartService } from '../lib/services';
 import { supabase } from '../lib/supabase';
 import { useNotification } from '../hooks/useNotification';
+import { useProductModal } from '../hooks/useProductModal.jsx';
 import './PerfilLoja.css';
+import { RxArrowLeft } from "react-icons/rx";
 
 const PerfilLoja = () => {
   const { storeSlug } = useParams();
   const navigate = useNavigate();
   const { notification, showNotification } = useNotification();
+  const { abrirModal, ProductModal } = useProductModal();
   const [loja, setLoja] = useState(null);
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +82,7 @@ const PerfilLoja = () => {
 
     try {
       let { data: cart } = await cartService.getActiveCart(user.id);
-      
+
       if (!cart) {
         const { data: newCart } = await cartService.createCart(user.id);
         cart = newCart[0];
@@ -121,6 +124,13 @@ const PerfilLoja = () => {
     window.history.back();
   };
 
+  const handleCardClick = (e, produto) => {
+    if (e.target.closest('.produto-controles')) {
+      return;
+    }
+    abrirModal(produto);
+  };
+
   if (loading) {
     return <div className="perfil-loja-container">Carregando...</div>;
   }
@@ -136,10 +146,10 @@ const PerfilLoja = () => {
           {notification.message}
         </div>
       )}
-      
+
       <div className="loja-header">
         <button className="btn-voltar" onClick={handleVoltar}>
-          ←
+          <RxArrowLeft />
         </button>
         <div className="loja-info">
           <h1 className="loja-nome">{loja.name}</h1>
@@ -157,40 +167,51 @@ const PerfilLoja = () => {
         </div>
       </div>
 
-      <div className="loja-produtos-section">        
+      <div className="loja-produtos-section">
         {produtos.length === 0 ? (
           <p className="sem-produtos">Esta loja ainda não possui produtos cadastrados.</p>
         ) : (
           <div className="produtos-grid">
             {produtos.map(listing => (
-              <div key={listing.id} className="produto-card">
-                <img 
-                  src={`https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&h=300&fit=crop`}
+              <div
+                key={listing.id}
+                className="produto-card"
+                onClick={(e) => handleCardClick(e, {
+                  id: listing.id,
+                  nome: listing.products.name,
+                  descricao: listing.products.description,
+                  preco: parseFloat(listing.price),
+                  stock: listing.stock,
+                  loja: loja.name,
+                  imagem: listing.products.images?.[0]
+                })}
+              >
+                <img
+                  src={listing.products.images?.[0]}
                   alt={listing.products.name}
                   className="produto-imagem"
                 />
+
                 <h3 className="produto-nome">{listing.products.name}</h3>
-                {listing.products.description && (
-                  <p className="produto-descricao">{listing.products.description}</p>
-                )}
+
                 <p className="produto-preco">
                   R$ {parseFloat(listing.price).toFixed(2).replace('.', ',')}
                 </p>
-                
+
                 <div className="produto-controles">
-                  <button 
+                  <button
                     className="btn-carrinho"
                     onClick={() => removerDoCarrinho(listing)}
                     disabled={!quantidades[listing.id]}
                   >
                     -
                   </button>
-                  
+
                   <span className="quantidade-produto">
                     {quantidades[listing.id] || 0}
                   </span>
-                  
-                  <button 
+
+                  <button
                     className="btn-carrinho"
                     onClick={() => adicionarAoCarrinho(listing)}
                     disabled={listing.stock === 0 || (quantidades[listing.id] >= listing.stock)}
@@ -212,6 +233,33 @@ const PerfilLoja = () => {
           </div>
         )}
       </div>
+
+      <ProductModal
+        showControls={true}
+        renderControls={(produto) => (
+          <>
+            <button
+              className="btn-carrinho"
+              onClick={() => removerDoCarrinho(produtos.find(p => p.products.name === produto.nome))}
+              disabled={!quantidades[produto.id]}
+            >
+              -
+            </button>
+
+            <span className="quantidade-produto">
+              {quantidades[produto.id] || 0}
+            </span>
+
+            <button
+              className="btn-carrinho"
+              onClick={() => adicionarAoCarrinho(produtos.find(p => p.products.name === produto.nome))}
+              disabled={produto.stock === 0 || (quantidades[produto.id] >= produto.stock)}
+            >
+              +
+            </button>
+          </>
+        )}
+      />
     </div>
   );
 };

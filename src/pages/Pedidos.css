@@ -173,13 +173,11 @@
 .pedido-info {
     display: flex;
     flex: 1;
-    align-items: center;
+    align-items: baseline;
+    gap: 0.5rem;
 }
 
 .pedido-info h3 {
-    display: flex;
-    align-items: center;
-    margin: 0;
     font-size: 18px;
     font-weight: 800;
     color: #1e293b;
@@ -291,7 +289,7 @@
 
 .pedido-itens {
     background: white;
-    padding: 1.25rem;
+    padding: 0 1rem;
     border-radius: 12px;
     border: 2px solid #f1f5f9;
 }
@@ -300,7 +298,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 0;
+    padding: 0.75rem 0;
     border-bottom: 2px solid #f1f5f9;
     gap: 1.5rem;
 }
@@ -401,6 +399,7 @@
     font-weight: 800;
     color: #1e293b;
     border: 2px solid #667eea;
+    margin-top: 0.25rem;
 }
 
 .pedido-total-expandido span:last-child {
@@ -433,14 +432,8 @@
 
     .pedido-header {
         flex-wrap: wrap;
-        gap: 0.75rem;
-        padding: 1rem 1rem 0 1rem;
-    }
-
-    .pedido-info {
-        width: 100%;
-        flex-direction: column;
-        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.5rem 0.5rem 0 0.5rem;
     }
 
     .pedido-data {

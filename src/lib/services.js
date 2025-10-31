@@ -3,23 +3,23 @@ import { supabase } from './supabase'
 
 
 export const productsService = {
-  async getProducts() {
-    const { data, error } = await supabase
-      .from('products')
-      .select(`
-        *,
-        product_listings!product_listings_product_id_fkey (
-          id,
-          price,
-          stock,
-          store_id,
-          stores!product_listings_store_id_fkey ( name, is_approved )
-        )
-      `)
-      .order('created_at', { ascending: false })
+async getProducts() {
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      product_listings!product_listings_product_id_fkey (
+        id,
+        price,
+        stock,
+        store_id,
+        stores!product_listings_store_id_fkey ( name, is_approved )
+      )
+    `)
+    .order('created_at', { ascending: false })
 
-    return { data, error }
-  },
+  return { data, error }
+},
 
   // Buscar produto por ID
   async getProduct(id) {
@@ -77,19 +77,26 @@ export const listingsService = {
 
   // Listar produtos ativos com menor preço (apenas de lojas aprovadas)
   async getActiveListings() {
-    const { data, error } = await supabase
-      .from('product_listings')
-      .select(`
-        *,
-        products!product_listings_product_id_fkey (*),
-        stores!product_listings_store_id_fkey ( name, is_approved )
-      `)
-      .eq('is_active', true)
-      .gt('stock', 0)
-      .order('price', { ascending: true })
+  const { data, error } = await supabase
+    .from('product_listings')
+    .select(`
+      *,
+      products!product_listings_product_id_fkey (
+        id,
+        name,
+        description,
+        category,
+        subcategory,
+        images
+      ),
+      stores!product_listings_store_id_fkey ( name, is_approved )
+    `)
+    .eq('is_active', true)
+    .gt('stock', 0)
+    .order('price', { ascending: true })
 
-    return { data, error }
-  },
+  return { data, error }
+},
 
   // Listar produtos de uma loja específica
   async getStoreListings(storeId) {
@@ -130,7 +137,8 @@ async getActiveCart(userId) {
             id,
             name,
             description,
-            category
+            category,
+            images
           ),
           stores!product_listings_store_id_fkey (
             id,
@@ -327,23 +335,24 @@ export const storesService = {
 
   // Buscar produtos de uma loja
   async getStoreProducts(storeId) {
-    const { data, error } = await supabase
-      .from('product_listings')
-      .select(`
-        *,
-        products (
-          id,
-          name,
-          description,
-          category
-        )
-      `)
-      .eq('store_id', storeId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
+  const { data, error } = await supabase
+    .from('product_listings')
+    .select(`
+      *,
+      products (
+        id,
+        name,
+        description,
+        category,
+        images
+      )
+    `)
+    .eq('store_id', storeId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
 
-    return { data, error: error?.message }
-  },
+  return { data, error: error?.message }
+},
 
   // Atualizar product listing (preço e estoque)
   async updateProductListing(listingId, updateData) {
@@ -371,27 +380,28 @@ export const storesService = {
 
   // Buscar product listing por ID
   async getProductListing(listingId) {
-    const { data, error } = await supabase
-      .from('product_listings')
-      .select(`
-        *,
-        products (
-          id,
-          name,
-          description,
-          category
-        ),
-        stores (
-          id,
-          name,
-          user_id
-        )
-      `)
-      .eq('id', listingId)
-      .single()
+  const { data, error } = await supabase
+    .from('product_listings')
+    .select(`
+      *,
+      products (
+        id,
+        name,
+        description,
+        category,
+        images
+      ),
+      stores (
+        id,
+        name,
+        user_id
+      )
+    `)
+    .eq('id', listingId)
+    .single()
 
-    return { data, error: error?.message }
-  },
+  return { data, error: error?.message }
+},  
 
   // Ativar/desativar product listing
   async toggleProductListing(listingId, isActive) {
@@ -406,31 +416,31 @@ export const storesService = {
 
   // Criar product listing
   async createProductListing(listingData) {
-    console.log('Dados sendo enviados:', listingData);
 
-    const { data, error } = await supabase
-      .from('product_listings')
-      .insert([{
-        product_id: listingData.product_id,
-        store_id: listingData.store_id,
-        price: listingData.price,
-        stock: listingData.stock,
-        is_active: listingData.is_active ?? true
-      }])
-      .select(`
-        *,
-        products (
-          id,
-          name,
-          description,
-          category
-        )
-      `)
+  const { data, error } = await supabase
+    .from('product_listings')
+    .insert([{
+      product_id: listingData.product_id,
+      store_id: listingData.store_id,
+      price: listingData.price,
+      stock: listingData.stock,
+      is_active: listingData.is_active ?? true
+    }])
+    .select(`
+      *,
+      products (
+        id,
+        name,
+        description,
+        category,
+        images
+      )
+    `)
 
-    if (error) {
-      console.error('Erro detalhado do Supabase:', error);
-    }
-
-    return { data, error: error?.message }
+  if (error) {
+    console.error('Erro detalhado do Supabase:', error);
   }
+
+  return { data, error: error?.message }
+}
 }

@@ -9,39 +9,44 @@ export const searchService = {
     const { limit = 10, offset = 0 } = options;
 
     if (!termo || termo.trim().length < 2) {
-      return { 
-        produtos: [], 
-        lojas: [], 
-        error: 'Termo deve ter no mínimo 2 caracteres' 
+      return {
+        produtos: [],
+        lojas: [],
+        error: 'Termo deve ter no mínimo 2 caracteres'
       };
     }
 
     try {
-      // Buscar produtos usando Full Text Search
+      // ✅ CORRIGIDO - Adicionar subcategory E remover do OR
       const { data: produtosData, error: erroProdutos } = await supabase
         .from('products')
         .select(`
+        id,
+        name,
+        description,
+        category,
+        subcategory,
+        images,
+        product_listings (
           id,
-          name,
-          description,
-          category,
-          product_listings (
+          price,
+          stock,
+          is_active,
+          store_id,
+          stores (
             id,
-            price,
-            stock,
-            is_active,
-            store_id,
-            stores (
-              id,
-              name,
-              is_approved
-            )
+            name,
+            is_approved
           )
-        `)
+        )
+      `)
         .or(`name.ilike.%${termo}%,category.ilike.%${termo}%,description.ilike.%${termo}%`)
         .limit(limit);
 
-      // Buscar lojas usando Full Text Search
+      if (produtosData && produtosData.length > 0) {
+      }
+
+      // Buscar lojas
       const { data: lojasData, error: erroLojas } = await supabase
         .from('stores')
         .select('id, name, category, description, email, phone')
@@ -52,16 +57,13 @@ export const searchService = {
       if (erroProdutos) console.error('Erro busca produtos:', erroProdutos);
       if (erroLojas) console.error('Erro busca lojas:', erroLojas);
 
-      // Formatar resultados
       let produtos = this._formatarProdutos(produtosData || []);
       let lojas = lojasData || [];
 
-      // Aplicar paginação
       produtos = produtos.slice(offset, offset + limit);
       lojas = lojas.slice(offset, offset + limit);
 
-      // Filtrar apenas lojas de produtos que encontramos
-      const lojasFiltered = lojas.filter(loja => 
+      const lojasFiltered = lojas.filter(loja =>
         !produtos.some(p => p.name.toLowerCase() === loja.name.toLowerCase())
       );
 
@@ -95,37 +97,36 @@ export const searchService = {
       const { data, error } = await supabase
         .from('products')
         .select(`
+        id,
+        name,
+        description,
+        category,
+        subcategory,
+        images,
+        created_at,
+        product_listings (
           id,
-          name,
-          description,
-          category,
-          subcategory,
-          created_at,
-          product_listings (
+          price,
+          stock,
+          is_active,
+          stores (
             id,
-            price,
-            stock,
-            is_active,
-            stores (
-              id,
-              name,
-              is_approved
-            )
+            name,
+            is_approved
           )
-        `)
-        .or(`name.ilike.%${termo}%,category.ilike.%${termo}%`)
+        )
+      `)
+        .or(`name.ilike.%${termo}%,category.ilike.%${termo}%,description.ilike.%${termo}%`)
         .limit(limit);
 
       if (error) throw error;
 
       let produtos = this._formatarProdutos(data || []);
 
-      // Filtrar por estoque
       if (inStock) {
         produtos = produtos.filter(p => p.emEstoque);
       }
 
-      // Filtrar por preço
       if (minPrice || maxPrice) {
         produtos = produtos.filter(p => {
           if (minPrice && p.precoMinimo > 0 && p.precoMinimo < minPrice) return false;
@@ -175,21 +176,24 @@ export const searchService = {
       const { data, error } = await supabase
         .from('products')
         .select(`
+        id,
+        name,
+        description,
+        category,
+        subcategory,
+        images,
+        product_listings (
           id,
-          name,
-          description,
-          category,
-          product_listings (
-            price,
-            stock,
-            is_active,
-            stores (
-              id,
-              name,
-              is_approved
-            )
+          price,
+          stock,
+          is_active,
+          stores (
+            id,
+            name,
+            is_approved
           )
-        `)
+        )
+      `)
         .ilike('category', `%${category}%`)
         .limit(limit);
 
@@ -257,9 +261,8 @@ export const searchService = {
     return produtos
       .map(p => {
         const listings = p.product_listings || [];
-        
-        // Filtrar apenas listings de lojas aprovadas e ativas
-        const listingsAtivos = listings.filter(l => 
+
+        const listingsAtivos = listings.filter(l =>
           l.is_active && l.stores?.is_approved
         );
 
@@ -271,15 +274,16 @@ export const searchService = {
           .map(l => l.price)
           .filter(p => p > 0)
           .sort((a, b) => a - b);
-        
+
         const estoques = listingsAtivos.map(l => l.stock || 0);
 
-        return {
+        const produtoFormatado = {
           id: p.id,
           name: p.name,
           description: p.description,
           category: p.category,
           subcategory: p.subcategory,
+          images: p.images,  // ✅ CRÍTICO
           precoMinimo: precos[0] || 0,
           precoMaximo: precos[precos.length - 1] || 0,
           emEstoque: estoques.some(e => e > 0),
@@ -287,6 +291,8 @@ export const searchService = {
           totalLojas: listingsAtivos.length,
           listings: listingsAtivos
         };
+
+        return produtoFormatado;
       })
       .filter(p => p !== null);
   }

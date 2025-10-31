@@ -16,30 +16,6 @@
   margin-right: auto;
 }
 
-.btn-voltar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: white;
-  border: 2px solid #667eea;
-  font-size: 24px;
-  font-weight: 700;
-  color: #667eea;
-  cursor: pointer;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.btn-voltar:hover {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  transform: translateX(-4px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-}
-
 .conta-header h1 {
   margin: 0;
   font-size: 32px;
@@ -307,12 +283,6 @@
 
   .conta-header h1 {
     font-size: 24px;
-  }
-
-  .btn-voltar {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
   }
   
   .conta-form {

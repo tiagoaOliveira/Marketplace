@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import Pedidos from './Pedidos'
 import './Perfil.css'
+import { RxArrowLeft } from "react-icons/rx";
 
 const PerfilUsuario = () => {
   const { user, userProfile, signUp, signIn, signOut, updateProfile, loading, error, isAuthenticated } = useAuth()
@@ -511,7 +512,7 @@ const PerfilUsuario = () => {
     <div className="conta-container">
       <div className="conta-header">
         <button className="btn-voltar" onClick={handleVoltar}>
-          ←
+          <RxArrowLeft />
         </button>
         <h1>{getTitulo()}</h1>
       </div>
