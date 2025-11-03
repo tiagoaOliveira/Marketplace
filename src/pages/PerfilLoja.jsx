@@ -11,7 +11,7 @@ const PerfilLoja = () => {
   const { storeSlug } = useParams();
   const navigate = useNavigate();
   const { notification, showNotification } = useNotification();
-  const { abrirModal, ProductModal } = useProductModal();
+  const { abrirModal,fecharModal, ProductModal } = useProductModal();
   const [loja, setLoja] = useState(null);
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +76,7 @@ const PerfilLoja = () => {
 
   const adicionarAoCarrinho = async (listing) => {
     if (!user) {
+      fecharModal();
       showNotification('Faça login para adicionar produtos ao carrinho', 'warning');
       return;
     }

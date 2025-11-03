@@ -3,6 +3,36 @@ import { supabase } from './supabase';
 
 export const searchService = {
   /**
+   * ✅ NOVO - Busca apenas no catálogo de produtos (sem filtrar por listings)
+   * Usado para vendedores adicionarem produtos às suas lojas
+   */
+  async searchCatalog(termo, options = {}) {
+    const { limit = 20 } = options;
+
+    if (!termo || termo.trim().length < 2) {
+      return { produtos: [], error: null };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, description, category, subcategory, images')
+        .or(`name.ilike.%${termo}%,category.ilike.%${termo}%,subcategory.ilike.%${termo}%,description.ilike.%${termo}%`)
+        .limit(limit);
+
+      if (error) throw error;
+
+      return { 
+        produtos: data || [], 
+        error: null 
+      };
+    } catch (error) {
+      console.error('Erro busca catálogo:', error);
+      return { produtos: [], error: 'Erro ao buscar catálogo' };
+    }
+  },
+
+  /**
    * Busca otimizada para grandes volumes usando Full Text Search
    */
   async search(termo, options = {}) {

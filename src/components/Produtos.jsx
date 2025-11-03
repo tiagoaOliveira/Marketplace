@@ -126,6 +126,7 @@ const ProdutosShowcase = ({
 
   const adicionarAoCarrinho = async (listing) => {
     if (!user) {
+      fecharModal();
       showNotification('Faça login para adicionar produtos ao carrinho', 'warning');
       return;
     }

@@ -1,9 +1,11 @@
-// Loja.jsx - Refatorado com useSearch
+// Loja.jsx - Com exclusão/reativação funcionais
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { storesService, productsService } from '../lib/services';
+import { supabase } from '../lib/supabase';
 import { useSearch } from '../hooks/useSearch';
+import { useCatalogSearch } from '../hooks/useCatalogSearch';
 import { LiaEdit } from "react-icons/lia";
 import { X } from 'lucide-react';
 import { RxArrowLeft } from "react-icons/rx";
@@ -31,11 +33,8 @@ const Stores = () => {
   const [addProductForm, setAddProductForm] = useState({ price: '', stock: '' });
   const [isSubmittingAdd, setIsSubmittingAdd] = useState(false);
 
-  // Hook de busca para produtos da loja (sem auto-search)
   const searchProductsInStore = useSearch({ autoSearch: false, limit: 50 });
-  
-  // Hook de busca para catálogo (com auto-search)
-  const searchCatalog = useSearch({ autoSearch: true, limit: 20, minChars: 2 });
+  const searchCatalog = useCatalogSearch({ autoSearch: true, limit: 20, minChars: 2 });
 
   const [formData, setFormData] = useState({
     name: '', business_name: '', description: '', category: '', cnpj: '', email: '', phone: '',
@@ -75,8 +74,31 @@ const Stores = () => {
     if (storeProducts[storeId]) return;
     setLoadingProducts(prev => ({ ...prev, [storeId]: true }));
     try {
-      const { data, error } = await storesService.getStoreProducts(storeId);
-      if (!error) setStoreProducts(prev => ({ ...prev, [storeId]: data || [] }));
+      // Buscar TODOS os produtos (ativos E inativos) diretamente do banco
+      const { data, error } = await supabase
+        .from('product_listings')
+        .select(`
+          *,
+          products (
+            id,
+            name,
+            description,
+            category,
+            images
+          )
+        `)
+        .eq('store_id', storeId);
+      
+      if (!error) {
+        const allProducts = data || [];
+        const activeProducts = allProducts.filter(p => p.is_active !== false);
+        
+        setStoreProducts(prev => ({ 
+          ...prev, 
+          [storeId]: activeProducts,
+          [`${storeId}_all`]: allProducts
+        }));
+      }
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
     } finally {
@@ -94,16 +116,17 @@ const Stores = () => {
     }
   };
 
-  const handleToggleCatalog = (store) => {
+  const handleToggleCatalog = async (store) => {
     if (expandedCatalog === store.id) {
       setExpandedCatalog(null);
       searchCatalog.handleClear();
     } else {
       setExpandedCatalog(store.id);
+      // Garantir que os produtos da loja estejam carregados (incluindo inativos)
+      await loadStoreProducts(store.id);
     }
   };
 
-  // Filtrar produtos localmente
   const getFilteredStoreProducts = (storeId) => {
     const products = storeProducts[storeId] || [];
     const term = searchProductsInStore.searchTerm.toLowerCase().trim();
@@ -228,17 +251,50 @@ const Stores = () => {
   };
 
   const handleDeleteProduct = async (product) => {
-    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+    if (!confirm('Tem certeza que deseja remover este produto da loja? Você pode reativá-lo depois se quiser.')) return;
     try {
-      const { error } = await storesService.deleteProductListing(product.id);
+      const { data, error } = await supabase
+        .from('product_listings')
+        .update({ is_active: false })
+        .eq('id', product.id)
+        .select(`
+          *,
+          products (
+            id,
+            name,
+            description,
+            category,
+            images
+          )
+        `);
+      
       if (error) {
-        console.error('Erro ao excluir produto:', error);
+        console.error('Erro ao remover produto:', error);
+        alert('Erro ao remover produto. Tente novamente.');
         return;
       }
-      const storeId = product.store_id || Object.keys(storeProducts).find(id => storeProducts[id].some(p => p.id === product.id));
-      if (storeId) setStoreProducts(prev => ({ ...prev, [storeId]: prev[storeId].filter(p => p.id !== product.id) }));
+      
+      const storeId = product.store_id || Object.keys(storeProducts).find(id => 
+        storeProducts[id].some(p => p.id === product.id)
+      );
+      
+      if (storeId) {
+        const inactiveListing = data[0];
+        
+        setStoreProducts(prev => ({ 
+          ...prev, 
+          // Remove dos ativos
+          [storeId]: prev[storeId].filter(p => p.id !== product.id),
+          // Adiciona/atualiza no _all com is_active: false
+          [`${storeId}_all`]: [
+            ...(prev[`${storeId}_all`] || []).filter(p => p.id !== product.id),
+            inactiveListing
+          ]
+        }));
+      }
     } catch (error) {
-      console.error('Erro ao excluir produto:', error);
+      console.error('Erro ao remover produto:', error);
+      alert('Erro ao remover produto. Tente novamente.');
     }
   };
 
@@ -257,21 +313,85 @@ const Stores = () => {
     if (!addingProduct) return;
     setIsSubmittingAdd(true);
     try {
-      const listingData = {
-        product_id: addingProduct.product.id, store_id: addingProduct.store.id,
-        price: parseFloat(addProductForm.price) || 0, stock: parseInt(addProductForm.stock) || 0, is_active: true
-      };
-      const { data, error } = await storesService.createProductListing(listingData);
-      if (error) {
-        console.error('Erro ao adicionar produto:', error);
-        return;
+      const allProducts = storeProducts[`${addingProduct.store.id}_all`] || [];
+      
+      const existingListing = allProducts.find(
+        listing => (listing.products?.id === addingProduct.product.id || listing.product_id === addingProduct.product.id)
+      );
+
+      if (existingListing) {
+        const { data, error } = await supabase
+          .from('product_listings')
+          .update({
+            price: parseFloat(addProductForm.price) || 0,
+            stock: parseInt(addProductForm.stock) || 0,
+            is_active: true
+          })
+          .eq('id', existingListing.id)
+          .select(`
+            *,
+            products (
+              id,
+              name,
+              description,
+              category,
+              images
+            )
+          `);
+        
+        if (error) {
+          console.error('Erro ao reativar produto:', error);
+          alert('Erro ao reativar produto. Tente novamente.');
+          return;
+        }
+
+        const updatedListing = data[0];
+        
+        setStoreProducts(prev => ({
+          ...prev,
+          [addingProduct.store.id]: [
+            ...(prev[addingProduct.store.id] || []).filter(p => p.id !== existingListing.id),
+            updatedListing
+          ],
+          [`${addingProduct.store.id}_all`]: [
+            ...(prev[`${addingProduct.store.id}_all`] || []).filter(p => p.id !== existingListing.id),
+            updatedListing
+          ]
+        }));
+
+        alert('Produto reativado com sucesso!');
+      } else {
+        const listingData = {
+          product_id: addingProduct.product.id,
+          store_id: addingProduct.store.id,
+          price: parseFloat(addProductForm.price) || 0,
+          stock: parseInt(addProductForm.stock) || 0,
+          is_active: true
+        };
+        
+        const { data, error } = await storesService.createProductListing(listingData);
+        
+        if (error) {
+          console.error('Erro ao adicionar produto:', error);
+          alert('Erro ao adicionar produto. Tente novamente.');
+          return;
+        }
+        
+        const newListing = { ...data[0], products: addingProduct.product };
+        setStoreProducts(prev => ({
+          ...prev,
+          [addingProduct.store.id]: [...(prev[addingProduct.store.id] || []), newListing],
+          [`${addingProduct.store.id}_all`]: [...(prev[`${addingProduct.store.id}_all`] || []), newListing]
+        }));
+
+        alert('Produto adicionado com sucesso!');
       }
-      const newListing = { ...data[0], products: addingProduct.product };
-      setStoreProducts(prev => ({ ...prev, [addingProduct.store.id]: [...(prev[addingProduct.store.id] || []), newListing] }));
+
       setAddingProduct(null);
       setAddProductForm({ price: '', stock: '' });
     } catch (error) {
       console.error('Erro ao adicionar produto:', error);
+      alert('Erro ao adicionar produto. Tente novamente.');
     } finally {
       setIsSubmittingAdd(false);
     }
@@ -499,7 +619,6 @@ const Stores = () => {
                   </div>
                 </div>
 
-                {/* SEÇÃO DE PRODUTOS - Com busca local usando hook */}
                 <div className="store-products-container">
                   <div className="store-products-header" onClick={() => handleToggleProducts(store)}>
                     <h3 className="store-products-title">Produtos - {store.name}</h3>
@@ -545,7 +664,7 @@ const Stores = () => {
                                   <div className="product-details">
                                     <div className='product-bottom'>
                                       <span className="product-price">R$ {priceFormatted}</span>
-                                    <span className="product-stock">Estoque: {listing.stock ?? '—'}</span>
+                                      <span className="product-stock">Estoque: {listing.stock ?? '—'}</span>
                                     </div>
                                     
                                     <div className="product-actions">
@@ -569,7 +688,6 @@ const Stores = () => {
                   )}
                 </div>
 
-                {/* SEÇÃO DE CATÁLOGO - Com busca usando hook */}
                 <div className="store-products-container">
                   <div className="store-products-header catalog-header" onClick={() => handleToggleCatalog(store)}>
                     <h3 className="store-products-title">Adicionar Produtos</h3>
@@ -606,19 +724,36 @@ const Stores = () => {
                             )}
                             <div className="products-list">
                               {searchCatalog.produtos.map(product => {
-                                const alreadyAdded = storeProducts[store.id]?.some(
-                                  listing => listing.products?.id === product.id || listing.product_id === product.id
+                                const allProducts = storeProducts[`${store.id}_all`] || [];
+                                const existingListing = allProducts.find(
+                                  listing => (listing.products?.id === product.id || listing.product_id === product.id)
                                 );
+                                const alreadyAdded = existingListing && existingListing.is_active !== false;
+                                const canReactivate = existingListing && existingListing.is_active === false;
+
                                 return (
-                                  <div key={product.id} className="product-item">
+                                  <div key={product.id} className={`product-item ${canReactivate ? 'inactive-product' : ''}`}>
                                     <div className="product-info">
-                                      <h5>{product.name}</h5>
+                                      <h5>
+                                        {product.name}
+                                        {canReactivate && <span className="inactive-badge">⚠️ Desativado</span>}
+                                      </h5>
                                       {product.category && <p className="product-category">{product.category}</p>}
+                                      {product.subcategory && <p className="product-category">{product.subcategory}</p>}
                                       {product.description && <p className="product-description">{product.description}</p>}
+                                      {canReactivate && (
+                                        <p className="reactivate-hint">
+                                          Este produto foi removido da sua loja. Clique em "Reativar" para adicioná-lo novamente.
+                                        </p>
+                                      )}
                                     </div>
                                     <div className="product-details">
                                       {alreadyAdded ? (
-                                        <span className="product-status">Já adicionado</span>
+                                        <span className="product-status">✓ Ativo na loja</span>
+                                      ) : canReactivate ? (
+                                        <button className="btn-reactivate-product" onClick={() => handleAddProduct(product, store)}>
+                                          🔄 Reativar Produto
+                                        </button>
                                       ) : (
                                         <button className="btn-add-product" onClick={() => handleAddProduct(product, store)}>+ Adicionar</button>
                                       )}

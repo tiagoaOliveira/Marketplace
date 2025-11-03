@@ -3,8 +3,9 @@ CREATE TABLE products (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
+    images TEXT[],
     category TEXT,
-    subcategory TEXT;
+    subcategory TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

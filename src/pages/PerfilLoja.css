@@ -148,24 +148,11 @@
   pointer-events: none;
 }
 
-.produto-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.2);
-}
-
-.produto-card:hover::before {
-  opacity: 1;
-}
-
 .produto-imagem {
   width: 100%;
   height: 240px;
   object-fit: cover;
   transition: transform 0.4s ease;
-}
-
-.produto-card:hover .produto-imagem {
-  transform: scale(1.05);
 }
 
 .produto-card > * {

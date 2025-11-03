@@ -51,7 +51,7 @@ function SearchSystem({ onProductSelect, onStoreSelect }) {
           {!searchTerm && <Search className="search-icon" size={20} />}
           <input
             type="text"
-            placeholder="Buscar produtos ou lojas..."
+            placeholder="Encontre produtos ou lojas..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onFocus={() => setShowResults(true)}
