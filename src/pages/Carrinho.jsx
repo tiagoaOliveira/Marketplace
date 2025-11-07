@@ -10,7 +10,7 @@ import { FaTrash } from "react-icons/fa";
 const CarrinhoCompras = () => {
   const navigate = useNavigate();
   const { abrirModal, ProductModal } = useProductModal();
-  
+
   const [itensCarrinho, setItensCarrinho] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
@@ -45,7 +45,7 @@ const CarrinhoCompras = () => {
   const carregarCarrinho = async (userId) => {
     try {
       const { data: cart, error } = await cartService.getActiveCart(userId);
-      
+
       if (error && error.code !== 'PGRST116') {
         console.error('Erro ao carregar carrinho:', error);
         return;
@@ -102,8 +102,8 @@ const CarrinhoCompras = () => {
       if (novaQuantidade <= 0) {
         setItensCarrinho(itens => itens.filter(item => item.id !== itemId));
       } else {
-        setItensCarrinho(itens => 
-          itens.map(item => 
+        setItensCarrinho(itens =>
+          itens.map(item =>
             item.id === itemId ? { ...item, quantidade: novaQuantidade } : item
           )
         );
@@ -114,7 +114,7 @@ const CarrinhoCompras = () => {
   };
 
   const calcularTotal = () => {
-    return itensCarrinho.reduce((total, item) => 
+    return itensCarrinho.reduce((total, item) =>
       total + (item.preco * item.quantidade), 0
     );
   };
@@ -306,34 +306,36 @@ const CarrinhoCompras = () => {
                 </div>
                 <div className="loja-produtos">
                   {items.map(item => (
-                    <div 
-                      key={item.id} 
+                    <div
+                      key={item.id}
                       className="carrinho-item"
                       onClick={(e) => handleItemClick(e, item)}
                     >
-                      <img 
-                        src={item.imagem} 
+                      <img
+                        src={item.imagem}
                         alt={item.nome}
                         className="item-imagem"
                       />
                       <div className="item-detalhes">
-                        
+
                         <div className='item-detalhes-header'>
                           <h3 className="item-nome">{item.nome}</h3>
-                          <p className="item-preco">
-                          R$ {item.preco.toFixed(2).replace('.', ',')}
-                        </p>
+                          <div className='precos'>
+                            <p className="item-preco">
+                              R$ {item.preco.toFixed(2).replace('.', ',')}
+                            </p>
+                            <p className="item-preco2">(R$ {(item.preco * item.quantidade).toFixed(2).replace('.', ',')})</p>                            </div>
                         </div>
                         <div className="item-controles">
                           <div className="quantidade-controles">
-                            <button 
+                            <button
                               className="btn-quantidade"
                               onClick={() => alterarQuantidade(item.id, item.quantidade - 1)}
                             >
                               -
                             </button>
                             <span className="quantidade">{item.quantidade}</span>
-                            <button 
+                            <button
                               className="btn-quantidade"
                               onClick={() => alterarQuantidade(item.id, item.quantidade + 1)}
                               disabled={item.quantidade >= item.stock}
@@ -341,7 +343,7 @@ const CarrinhoCompras = () => {
                               +
                             </button>
                           </div>
-                          <button 
+                          <button
                             className="btn-remover"
                             onClick={() => removerItem(item.id)}
                           >
@@ -371,7 +373,7 @@ const CarrinhoCompras = () => {
                 <span>Total:</span>
                 <span>R$ {calcularTotal().toFixed(2).replace('.', ',')}</span>
               </div>
-              <button 
+              <button
                 className="btn btn-primary btn-lg carrinho-finalizar"
                 onClick={finalizarCompra}
                 disabled={finalizando}
@@ -384,7 +386,7 @@ const CarrinhoCompras = () => {
       )}
 
       {/* Modal do Produto usando o hook */}
-      <ProductModal 
+      <ProductModal
         showControls={false}
         onStoreClick={irParaLoja}
       />

@@ -1,15 +1,71 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, User, Heart, ShoppingCart } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import './Header.css'
 import SearchSystem from './SearchSystem'
 import Produtos from './Produtos'
 import Categorias from './Categorias'
+import { supabase } from '../lib/supabase'
 
-function Header() {
+function Header({ user }) {
   const [categoriaSelecionada, setCategoriaSelecionada] = useState('Todos');
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
+  const [pedidosPendentes, setPedidosPendentes] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      carregarPedidosPendentes();
+      
+      // Configurar listener Realtime para mudanças em order_items
+      const subscription = supabase
+        .channel('order_items_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Escuta INSERT, UPDATE, DELETE
+            schema: 'public',
+            table: 'order_items'
+          },
+          (payload) => {
+            // Recarregar contagem quando houver qualquer mudança
+            carregarPedidosPendentes();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [user]);
+
+  const carregarPedidosPendentes = async () => {
+    try {
+      // Verificar se o usuário é vendedor
+      const { data: stores } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (stores && stores.length > 0) {
+        // É vendedor - contar itens pendentes
+        const storeIds = stores.map(s => s.id);
+        
+        const { data: items, error } = await supabase
+          .from('order_items')
+          .select('id')
+          .in('store_id', storeIds)
+          .eq('status', 'pendente');
+
+        if (!error && items) {
+          setPedidosPendentes(items.length);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar pedidos pendentes:', error);
+    }
+  };
 
   const handleCategoriaSelect = (categoria) => {
     setCategoriaSelecionada(categoria);
@@ -69,6 +125,11 @@ function Header() {
         <div className="header-actions">
           <Link to="/Perfil" className="header-btn">
             <User size={28} />
+            {pedidosPendentes > 0 && (
+              <span className="header-btn-badge">
+                {pedidosPendentes > 99 ? '99+' : pedidosPendentes}
+              </span>
+            )}
           </Link>
           <Link to="Carrinho" className="header-btn">
             <ShoppingCart size={28} />

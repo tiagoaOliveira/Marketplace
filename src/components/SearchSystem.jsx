@@ -102,7 +102,6 @@ function SearchSystem({ onProductSelect, onStoreSelect }) {
                           <div className="result-content">
                             <span className="result-name">{p.name}</span>
                             <div className="result-meta">
-                              <span className="result-category">{p.category}</span>
                               {p.precoMinimo > 0 && (
                                 <span className="result-price">
                                   R$ {p.precoMinimo.toFixed(2).replace('.', ',')}
@@ -110,7 +109,6 @@ function SearchSystem({ onProductSelect, onStoreSelect }) {
                               )}
                             </div>
                           </div>
-                          <span className="result-badge">Produto</span>
                         </li>
                       ))}
                     </ul>
@@ -131,7 +129,6 @@ function SearchSystem({ onProductSelect, onStoreSelect }) {
                             <span className="result-name">{l.name}</span>
                             <span className="result-category">{l.category}</span>
                           </div>
-                          <span className="result-badge store">Loja</span>
                         </li>
                       ))}
                     </ul>

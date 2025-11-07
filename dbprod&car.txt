@@ -86,7 +86,6 @@ CREATE POLICY "Users can delete own cart items" ON cart_items FOR DELETE USING (
   EXISTS (SELECT 1 FROM carts WHERE carts.id = cart_items.cart_id AND carts.user_id = auth.uid())
 );
 
-ALTER TABLE products ADD COLUMN images TEXT[];
 
 -- 10. Índices para performance
 CREATE INDEX idx_product_listings_product_id ON product_listings(product_id);

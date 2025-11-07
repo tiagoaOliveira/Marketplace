@@ -331,7 +331,6 @@
     cursor: pointer;
     color: #667eea;
     transition: color 0.3s ease;
-    text-decoration: underline;
 }
 
 .item-loja-clicavel:hover {

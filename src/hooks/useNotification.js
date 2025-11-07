@@ -4,12 +4,16 @@ import { useState } from 'react';
 export const useNotification = () => {
   const [notification, setNotification] = useState(null);
 
-  const showNotification = (message, type = 'warning') => {
+  const showNotification = (message, type = 'info') => {
     setNotification({ message, type });
     setTimeout(() => {
       setNotification(null);
-    }, 3000);
+    }, 4000);
   };
 
-  return { notification, showNotification };
+  const hideNotification = () => {
+    setNotification(null);
+  };
+
+  return { notification, showNotification, hideNotification };
 };

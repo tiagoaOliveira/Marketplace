@@ -31,7 +31,7 @@ const Pedidos = ({ user, userProfile }) => {
                 .from('stores')
                 .select('id')
                 .eq('user_id', user.id)
-            
+
             setIsVendor(stores && stores.length > 0)
             carregarPedidos()
         } catch (error) {
@@ -56,7 +56,7 @@ const Pedidos = ({ user, userProfile }) => {
                 }
 
                 const storeIds = stores.map(s => s.id)
-                
+
                 const { data: items } = await supabase
                     .from('order_items')
                     .select('*')
@@ -69,7 +69,7 @@ const Pedidos = ({ user, userProfile }) => {
                 }
 
                 const orderIds = [...new Set(items.map(item => item.order_id))]
-                
+
                 const { data: orders } = await supabase
                     .from('orders')
                     .select('*')
@@ -113,7 +113,7 @@ const Pedidos = ({ user, userProfile }) => {
 
             const { error } = await supabase
                 .from('order_items')
-                .update({ 
+                .update({
                     status: novoStatus,
                     status_updated_at: new Date().toISOString(),
                     status_updated_by: user.id
@@ -127,13 +127,13 @@ const Pedidos = ({ user, userProfile }) => {
                 prev.map(pedido => ({
                     ...pedido,
                     order_items: pedido.order_items?.map(item =>
-                        item.id === itemId 
-                            ? { 
-                                ...item, 
+                        item.id === itemId
+                            ? {
+                                ...item,
                                 status: novoStatus,
                                 status_updated_at: new Date().toISOString(),
                                 status_updated_by: user.id
-                              } 
+                            }
                             : item
                     ) || []
                 }))
@@ -153,9 +153,9 @@ const Pedidos = ({ user, userProfile }) => {
         if (entregues === total) return { tipo: 'entregue', texto: 'Todos entregues' }
         if (cancelados === total) return { tipo: 'cancelado', texto: 'Todos cancelados' }
         if (entregues > 0 || cancelados > 0) {
-            return { 
-                tipo: 'parcial', 
-                texto: `${entregues} entregue(s), ${cancelados} cancelado(s)` 
+            return {
+                tipo: 'parcial',
+                texto: `${entregues} entregue(s), ${cancelados} cancelado(s)`
             }
         }
 
@@ -164,11 +164,25 @@ const Pedidos = ({ user, userProfile }) => {
 
     const pedidosFiltrados = pedidos.filter(pedido => {
         if (filtro === 'todos') return true
-        
+
         if (visao === 'vendedor') {
             return pedido.order_items?.some(item => item.status === filtro)
         } else {
-            return pedido.summary_status?.includes(filtro)
+            // Na visão do comprador, verificar se algum item tem o status filtrado
+            const items = pedido.order_items || []
+
+            if (filtro === 'pendente') {
+                // Mostrar se TODOS os itens estão pendentes
+                return items.every(item => item.status === 'pendente')
+            } else if (filtro === 'entregue') {
+                // Mostrar se TODOS os itens estão entregues
+                return items.every(item => item.status === 'entregue')
+            } else if (filtro === 'cancelado') {
+                // Mostrar se TODOS os itens estão cancelados
+                return items.every(item => item.status === 'cancelado')
+            }
+
+            return false
         }
     })
 
@@ -250,7 +264,7 @@ const Pedidos = ({ user, userProfile }) => {
                 <div className="pedidos-lista">
                     {pedidosFiltrados.map(pedido => {
                         const resumo = resumoAlteracoes(pedido.order_items)
-                        
+
                         return (
                             <div key={pedido.id} className="pedido-card">
                                 <div className="pedido-header">
@@ -263,11 +277,11 @@ const Pedidos = ({ user, userProfile }) => {
 
                                     <div className="pedido-info">
                                         <h3>Pedido #{pedido.id.slice(0, 6)}
-                                            
+
                                         </h3>
                                         <p className="pedido-data">
-                                                {formatarData(pedido.created_at)}
-                                            </p>
+                                            {formatarData(pedido.created_at)}
+                                        </p>
                                     </div>
 
                                     <div className="pedido-acoes">
@@ -303,17 +317,18 @@ const Pedidos = ({ user, userProfile }) => {
                                                 <div key={item.id} className="item-expandido">
                                                     <div className="item-info">
                                                         <span className="item-nome">{item.product_name}</span>
-                                                        <span 
-                                                            className="item-loja item-loja-clicavel"
-                                                            onClick={() => irParaLoja(item.store_name)}
-                                                        >
-                                                            {item.store_name}
-                                                        </span>
+
                                                         <div className="item-status-container">
-                                                            <span 
+                                                            <span
                                                                 className={`item-status item-status-${item.status}`}
                                                             >
                                                                 {item.status.toUpperCase()}
+                                                            </span>
+                                                            <span
+                                                                className="item-loja item-loja-clicavel"
+                                                                onClick={() => irParaLoja(item.store_name)}
+                                                            >
+                                                                {item.store_name}
                                                             </span>
                                                             {item.status_updated_at && (
                                                                 <span className="item-status-data">

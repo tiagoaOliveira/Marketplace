@@ -76,7 +76,8 @@ const ProdutosShowcase = ({
             categoria: listing.products.category,
             subcategoria: listing.products.subcategory,
             loja: listing.stores.name,
-            imagem: listing.products.images?.[0]
+            imagem: listing.products.images?.[0],
+            images: listing.products.images || []
           };
         }
       });
@@ -262,7 +263,7 @@ const ProdutosShowcase = ({
               alt={produto.nome}
               className="produto-imagem"
             />
-            <h3 className="produto-nome">{produto.nome}</h3>
+            <h3 className="produto-nome-produtos">{produto.nome}</h3>
             <p className="produto-preco">
               R$ {produto.preco.toFixed(2).replace('.', ',')}
             </p>

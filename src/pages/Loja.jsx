@@ -9,9 +9,12 @@ import { useCatalogSearch } from '../hooks/useCatalogSearch';
 import { LiaEdit } from "react-icons/lia";
 import { X } from 'lucide-react';
 import { RxArrowLeft } from "react-icons/rx";
+import { Notification } from '../components/Notification';
+import { useNotification } from '../hooks/useNotification';
 import './Loja.css';
 
 const Stores = () => {
+  const { notification, showNotification, hideNotification } = useNotification();
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -19,6 +22,8 @@ const Stores = () => {
   const [loading, setLoading] = useState(true);
   const [editingStore, setEditingStore] = useState(null);
   const [creatingStore, setCreatingStore] = useState(false);
+
+  const [confirmingDelete, setConfirmingDelete] = useState(null);
 
   const [expandedProducts, setExpandedProducts] = useState(null);
   const [storeProducts, setStoreProducts] = useState({});
@@ -88,13 +93,13 @@ const Stores = () => {
           )
         `)
         .eq('store_id', storeId);
-      
+
       if (!error) {
         const allProducts = data || [];
         const activeProducts = allProducts.filter(p => p.is_active !== false);
-        
-        setStoreProducts(prev => ({ 
-          ...prev, 
+
+        setStoreProducts(prev => ({
+          ...prev,
           [storeId]: activeProducts,
           [`${storeId}_all`]: allProducts
         }));
@@ -130,9 +135,9 @@ const Stores = () => {
   const getFilteredStoreProducts = (storeId) => {
     const products = storeProducts[storeId] || [];
     const term = searchProductsInStore.searchTerm.toLowerCase().trim();
-    
+
     if (!term) return products;
-    
+
     return products.filter(listing => {
       const name = (listing.products?.name || listing.product?.name || listing.name || '').toLowerCase();
       const category = (listing.products?.category || listing.product?.category || '').toLowerCase();
@@ -251,50 +256,49 @@ const Stores = () => {
   };
 
   const handleDeleteProduct = async (product) => {
-    if (!confirm('Tem certeza que deseja remover este produto da loja? Você pode reativá-lo depois se quiser.')) return;
     try {
       const { data, error } = await supabase
         .from('product_listings')
         .update({ is_active: false })
         .eq('id', product.id)
         .select(`
-          *,
-          products (
-            id,
-            name,
-            description,
-            category,
-            images
-          )
-        `);
-      
+        *,
+        products (
+          id,
+          name,
+          description,
+          category,
+          images
+        )
+      `);
+
       if (error) {
         console.error('Erro ao remover produto:', error);
-        alert('Erro ao remover produto. Tente novamente.');
+        showNotification('Erro ao remover produto. Tente novamente.', 'error');
         return;
       }
-      
-      const storeId = product.store_id || Object.keys(storeProducts).find(id => 
+
+      const storeId = product.store_id || Object.keys(storeProducts).find(id =>
         storeProducts[id].some(p => p.id === product.id)
       );
-      
+
       if (storeId) {
         const inactiveListing = data[0];
-        
-        setStoreProducts(prev => ({ 
-          ...prev, 
-          // Remove dos ativos
+
+        setStoreProducts(prev => ({
+          ...prev,
           [storeId]: prev[storeId].filter(p => p.id !== product.id),
-          // Adiciona/atualiza no _all com is_active: false
           [`${storeId}_all`]: [
             ...(prev[`${storeId}_all`] || []).filter(p => p.id !== product.id),
             inactiveListing
           ]
         }));
+
+        showNotification('Produto removido com sucesso!', 'success');
       }
     } catch (error) {
       console.error('Erro ao remover produto:', error);
-      alert('Erro ao remover produto. Tente novamente.');
+      showNotification('Erro ao remover produto. Tente novamente.', 'error');
     }
   };
 
@@ -314,7 +318,7 @@ const Stores = () => {
     setIsSubmittingAdd(true);
     try {
       const allProducts = storeProducts[`${addingProduct.store.id}_all`] || [];
-      
+
       const existingListing = allProducts.find(
         listing => (listing.products?.id === addingProduct.product.id || listing.product_id === addingProduct.product.id)
       );
@@ -338,15 +342,14 @@ const Stores = () => {
               images
             )
           `);
-        
+
         if (error) {
           console.error('Erro ao reativar produto:', error);
-          alert('Erro ao reativar produto. Tente novamente.');
-          return;
+          showNotification('Erro ao reativar produto. Tente novamente.', 'error'); return;
         }
 
         const updatedListing = data[0];
-        
+
         setStoreProducts(prev => ({
           ...prev,
           [addingProduct.store.id]: [
@@ -359,7 +362,7 @@ const Stores = () => {
           ]
         }));
 
-        alert('Produto reativado com sucesso!');
+        showNotification('Produto reativado com sucesso!', 'success');
       } else {
         const listingData = {
           product_id: addingProduct.product.id,
@@ -368,15 +371,14 @@ const Stores = () => {
           stock: parseInt(addProductForm.stock) || 0,
           is_active: true
         };
-        
+
         const { data, error } = await storesService.createProductListing(listingData);
-        
+
         if (error) {
           console.error('Erro ao adicionar produto:', error);
-          alert('Erro ao adicionar produto. Tente novamente.');
-          return;
+          showNotification('Erro ao adicionar produto. Tente novamente.', 'error'); return;
         }
-        
+
         const newListing = { ...data[0], products: addingProduct.product };
         setStoreProducts(prev => ({
           ...prev,
@@ -384,14 +386,14 @@ const Stores = () => {
           [`${addingProduct.store.id}_all`]: [...(prev[`${addingProduct.store.id}_all`] || []), newListing]
         }));
 
-        alert('Produto adicionado com sucesso!');
+        showNotification('Produto adicionado com sucesso!', 'success');
       }
 
       setAddingProduct(null);
       setAddProductForm({ price: '', stock: '' });
     } catch (error) {
       console.error('Erro ao adicionar produto:', error);
-      alert('Erro ao adicionar produto. Tente novamente.');
+      showNotification('Erro ao adicionar produto. Tente novamente.', 'error');
     } finally {
       setIsSubmittingAdd(false);
     }
@@ -400,6 +402,13 @@ const Stores = () => {
   if (!isAuthenticated) {
     return (
       <div className="stores-container">
+        {notification && (
+          <Notification
+            message={notification.message}
+            type={notification.type}
+            onClose={hideNotification}
+          />
+        )}
         <div className="stores-header">
           <button className="btn-voltar" onClick={handleVoltar}><RxArrowLeft /></button>
           <h1>Minha Loja</h1>
@@ -412,6 +421,13 @@ const Stores = () => {
   if (loading) {
     return (
       <div className="stores-container">
+        {notification && (
+          <Notification
+            message={notification.message}
+            type={notification.type}
+            onClose={hideNotification}
+          />
+        )}
         <div className="stores-header">
           <button className="btn-voltar" onClick={handleVoltar}><RxArrowLeft /></button>
           <h1>Minha Loja</h1>
@@ -423,6 +439,13 @@ const Stores = () => {
 
   return (
     <div className="stores-container">
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={hideNotification}
+        />
+      )}
       <div className="stores-header">
         <button className="btn-voltar" onClick={handleVoltar}><RxArrowLeft /></button>
         <h1>{editingStore ? 'Editar Loja' : creatingStore ? 'Nova Loja' : 'Minha Loja'}</h1>
@@ -621,10 +644,10 @@ const Stores = () => {
 
                 <div className="store-products-container">
                   <div className="store-products-header" onClick={() => handleToggleProducts(store)}>
-                    <h3 className="store-products-title">Produtos - {store.name}</h3>
-                    <button className={`products-expand-btn ${expandedProducts === store.id ? 'expanded' : ''}`} type="button">▼</button>    
+                    <h3 className="store-products-title">Produtos Cadastrados</h3>
+                    <button className={`products-expand-btn ${expandedProducts === store.id ? 'expanded' : ''}`} type="button">▼</button>
                   </div>
-                  
+
                   {expandedProducts === store.id && (
                     <div className="store-products-content">
                       <div className="search-container">
@@ -666,10 +689,27 @@ const Stores = () => {
                                       <span className="product-price">R$ {priceFormatted}</span>
                                       <span className="product-stock">Estoque: {listing.stock ?? '—'}</span>
                                     </div>
-                                    
+
                                     <div className="product-actions">
                                       <button className="btn-edit-product" onClick={() => handleEditProduct(listing)}>Editar</button>
-                                      <button className="btn-delete-product" onClick={() => handleDeleteProduct(listing)}>Excluir</button>
+                                      {confirmingDelete === listing.id ? (
+                                        <button
+                                          className="btn-delete-product"
+                                          onClick={() => {
+                                            handleDeleteProduct(listing);
+                                            setConfirmingDelete(null);
+                                          }}
+                                        >
+                                          Certeza?
+                                        </button>
+                                      ) : (
+                                        <button
+                                          className="btn-delete-product"
+                                          onClick={() => setConfirmingDelete(listing.id)}
+                                        >
+                                          Excluir
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -678,7 +718,7 @@ const Stores = () => {
                           </div>
                         ) : (
                           <p className="no-products">
-                            {searchProductsInStore.searchTerm 
+                            {searchProductsInStore.searchTerm
                               ? `Nenhum produto encontrado para "${searchProductsInStore.searchTerm}"`
                               : 'Nenhum produto cadastrado nesta loja.'}
                           </p>
@@ -738,8 +778,7 @@ const Stores = () => {
                                         {product.name}
                                         {canReactivate && <span className="inactive-badge">⚠️ Desativado</span>}
                                       </h5>
-                                      {product.category && <p className="product-category">{product.category}</p>}
-                                      {product.subcategory && <p className="product-category">{product.subcategory}</p>}
+                                      {product.category && <p className="product-category">{product.subcategory}</p>}
                                       {product.description && <p className="product-description">{product.description}</p>}
                                       {canReactivate && (
                                         <p className="reactivate-hint">
