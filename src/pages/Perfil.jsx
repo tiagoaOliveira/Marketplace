@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 import Pedidos from './Pedidos'
 import './Perfil.css'
 import { RxArrowLeft } from "react-icons/rx";
@@ -11,6 +12,7 @@ const PerfilUsuario = () => {
   const navigate = useNavigate()
   const [telaAtiva, setTelaAtiva] = useState('menu')
   const [isVendor, setIsVendor] = useState(false)
+  const [pedidosPendentes, setPedidosPendentes] = useState(0)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -42,6 +44,47 @@ const PerfilUsuario = () => {
     }
   }, [userProfile])
 
+  useEffect(() => {
+    if (user) {
+      verificarVendedorECarregarPedidos()
+    }
+  }, [user])
+
+  const verificarVendedorECarregarPedidos = async () => {
+    try {
+      const { data: stores } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('user_id', user.id)
+
+      const ehVendedor = stores && stores.length > 0
+      setIsVendor(ehVendedor)
+
+      if (ehVendedor) {
+        carregarPedidosPendentes(stores.map(s => s.id))
+      }
+    } catch (error) {
+      console.error('Erro ao verificar vendedor:', error)
+    }
+  }
+
+  const carregarPedidosPendentes = async (storeIds) => {
+    try {
+      const { data: items } = await supabase
+        .from('order_items')
+        .select('order_id')
+        .in('store_id', storeIds)
+        .eq('status', 'pendente')
+
+      if (items) {
+        const uniqueOrders = [...new Set(items.map(item => item.order_id))]
+        setPedidosPendentes(uniqueOrders.length)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar pedidos pendentes:', error)
+    }
+  }
+
   const handleVoltar = () => {
     if (telaAtiva === 'menu') {
       window.history.back()
@@ -62,14 +105,29 @@ const PerfilUsuario = () => {
     }
   }
 
+  const formatCEP = (value) => {
+    const numbers = value.replace(/\D/g, '')
+    if (numbers.length <= 5) {
+      return numbers
+    } else {
+      return `${numbers.slice(0, 5)}-${numbers.slice(5, 8)}`
+    }
+  }
+
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    const newValue = name === 'phone' ? formatPhone(value) : value
+
+    const newValue = name === 'phone'
+      ? formatPhone(value)
+      : name === 'cep'
+        ? formatCEP(value)
+        : value
 
     setFormData(prev => ({
       ...prev,
       [name]: newValue
     }))
+
     if (formErrors[name]) {
       setFormErrors(prev => ({
         ...prev,
@@ -77,7 +135,6 @@ const PerfilUsuario = () => {
       }))
     }
   }
-
   const validateForm = (type) => {
     const errors = {}
 
@@ -225,15 +282,20 @@ const PerfilUsuario = () => {
               <p>Edite suas informações</p>
             </div>
           </div>
-          <div className="conta-opcao" onClick={() => setTelaAtiva('pedidos')}>
+          <div className="conta-opcao" onClick={() => setTelaAtiva('pedidos')} style={{ position: 'relative' }}>
             <span className="opcao-icone">📦</span>
             <div>
               <h3>Pedidos</h3>
               <p>Histórico de Vendas</p>
             </div>
+            {isVendor && pedidosPendentes > 0 && (
+              <span className="header-btn-badge2">
+                {pedidosPendentes > 99 ? '99+' : pedidosPendentes}
+              </span>
+            )}
           </div>
           <div className="conta-opcao" onClick={navigateToStores}>
-            <span className="opcao-icone">🏪</span>
+            <span className="opcao-icone">🪟</span>
             <div>
               <h3>Minha Loja</h3>
               <p>Gerenciar lojas e produtos</p>
@@ -416,6 +478,9 @@ const PerfilUsuario = () => {
           value={formData.cep}
           onChange={handleInputChange}
           placeholder="12345-678"
+          maxLength="9"
+          inputMode="numeric"
+          pattern="\d{5}-\d{3}"
         />
         {formErrors.cep && <span className="field-error">{formErrors.cep}</span>}
       </div>

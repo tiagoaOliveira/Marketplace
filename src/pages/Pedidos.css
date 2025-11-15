@@ -4,6 +4,112 @@
     margin: 0 auto;
 }
 
+.pedidos-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.btn-ajuda {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #667eea;
+    background: white;
+    color: #667eea;
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-ajuda:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    transform: scale(1.1);
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+}
+
+.modal-conteudo {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.modal-conteudo h3 {
+    margin: 0 0 1rem 0;
+    color: #1e293b;
+    font-size: 22px;
+}
+
+.modal-conteudo p {
+    margin: 0.5rem 0;
+    color: #475569;
+    line-height: 1.6;
+    font-size: 15px;
+}
+
+.modal-botoes {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.btn-modal {
+    flex: 1;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-modal-fechar {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.btn-modal-fechar:hover {
+    background: #cbd5e1;
+}
+
+.btn-modal-confirmar {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.btn-modal-confirmar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
 .visao-alternador {
     display: flex;
     gap: 1rem;
@@ -63,12 +169,6 @@
     transition: all 0.3s ease;
 }
 
-.filtro-btn:hover {
-    border-color: #667eea;
-    color: #667eea;
-    transform: translateY(-2px);
-}
-
 .filtro-btn.ativo {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-color: transparent;
@@ -92,8 +192,15 @@
 }
 
 @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
 }
 
 .pedidos-vazio p {
@@ -196,24 +303,25 @@
     gap: 1rem;
 }
 
-.pedido-status {
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    color: white;
-    font-size: 12px;
+.btn-marcar-completo {
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 13px;
     font-weight: 700;
-    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
     white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-.pedido-botoes {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+.btn-marcar-completo:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
-.btn-status-entregue,
 .btn-status-cancelado {
     padding: 0.5rem 1rem;
     border: none;
@@ -223,20 +331,6 @@
     cursor: pointer;
     transition: all 0.3s ease;
     white-space: nowrap;
-}
-
-.btn-status-entregue {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: white;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-}
-
-.btn-status-entregue:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
-}
-
-.btn-status-cancelado {
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: white;
     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
@@ -278,10 +372,6 @@
     line-height: 1.6;
 }
 
-.pedido-endereco p:first-of-type {
-    margin-top: 0;
-}
-
 .pedido-endereco p strong {
     color: #1e293b;
     font-weight: 700;
@@ -300,12 +390,16 @@
     align-items: center;
     padding: 0.75rem 0;
     border-bottom: 2px solid #f1f5f9;
-    gap: 1.5rem;
+    gap: 1rem;
 }
 
-.item-expandido:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
+.item-imagem {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .item-info {
@@ -357,7 +451,7 @@
     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
 
-.item-status-entregue {
+.item-status-normal {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
 
@@ -401,11 +495,23 @@
     margin-top: 0.25rem;
 }
 
-.pedido-total-expandido span:last-child {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+.header-btn-badge3 {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.5rem;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border-radius: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    border: 1px solid white;
+    animation: pulse 1.5s infinite;
 }
 
 @media (max-width: 768px) {
@@ -432,7 +538,7 @@
     .pedido-header {
         flex-wrap: wrap;
         gap: 0.5rem;
-        padding: 0.5rem 0.5rem 0 0.5rem;
+        padding: 0.5rem;
     }
 
     .pedido-data {
@@ -445,25 +551,24 @@
         gap: 0.75rem;
     }
 
-    .pedido-botoes {
-        width: 100%;
-        flex-direction: row;
-        gap: 0.5rem;
-    }
-
-    .btn-status-entregue,
-    .btn-status-cancelado {
-        flex: 1;
-    }
-
     .pedido-expandido {
         padding: 0 1rem 1rem 1rem;
+    }
+
+    .item-top {
+        display: flex;
+        gap: 0.5rem;
     }
 
     .item-expandido {
         flex-direction: column;
         align-items: flex-start;
-        gap: 1rem;
+        gap: 0.5rem;
+    }
+
+    .item-imagem {
+        width: 80px;
+        height: 80px;
     }
 
     .item-dados {

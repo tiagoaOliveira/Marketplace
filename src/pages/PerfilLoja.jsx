@@ -5,13 +5,14 @@ import { supabase } from '../lib/supabase';
 import { useNotification } from '../hooks/useNotification';
 import { useProductModal } from '../hooks/useProductModal.jsx';
 import './PerfilLoja.css';
+import '../components/Produtos'; // Importa estilos compartilhados
 import { RxArrowLeft } from "react-icons/rx";
 
 const PerfilLoja = () => {
   const { storeSlug } = useParams();
   const navigate = useNavigate();
   const { notification, showNotification } = useNotification();
-  const { abrirModal,fecharModal, ProductModal } = useProductModal();
+  const { abrirModal, fecharModal, ProductModal } = useProductModal();
   const [loja, setLoja] = useState(null);
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +127,7 @@ const PerfilLoja = () => {
   };
 
   const handleCardClick = (e, produto) => {
-    if (e.target.closest('.produto-controles')) {
+    if (e.target.closest('.produto-controles-loja')) {
       return;
     }
     abrirModal(produto);
@@ -184,7 +185,8 @@ const PerfilLoja = () => {
                   preco: parseFloat(listing.price),
                   stock: listing.stock,
                   loja: loja.name,
-                  imagem: listing.products.images?.[0]
+                  imagem: listing.products.images?.[0],
+                  images: listing.products.images || []
                 })}
               >
                 <img
@@ -193,13 +195,13 @@ const PerfilLoja = () => {
                   className="produto-imagem"
                 />
 
-                <h3 className="produto-nome">{listing.products.name}</h3>
+                <h3 className="produto-nome-produtos">{listing.products.name}</h3>
 
                 <p className="produto-preco">
                   R$ {parseFloat(listing.price).toFixed(2).replace('.', ',')}
                 </p>
 
-                <div className="produto-controles">
+                <div className="produto-controles-loja">
                   <button
                     className="btn-carrinho"
                     onClick={() => removerDoCarrinho(listing)}

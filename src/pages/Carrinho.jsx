@@ -20,6 +20,10 @@ const CarrinhoCompras = () => {
   const [modalErro, setModalErro] = useState(false);
   const [mensagemErro, setMensagemErro] = useState('');
   const [orderId, setOrderId] = useState(null);
+  const [showPerfilIncompleto, setShowPerfilIncompleto] = useState(false);
+
+  const [showConfirmacao, setShowConfirmacao] = useState(false);
+  const [dadosUsuario, setDadosUsuario] = useState(null);
 
   useEffect(() => {
     const initializeCart = async () => {
@@ -119,94 +123,123 @@ const CarrinhoCompras = () => {
     );
   };
 
-  const finalizarCompra = async () => {
-    if (!user || itensCarrinho.length === 0) return;
-
-    setFinalizando(true);
-    try {
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('fullname, email, phone, cep, rua, numero, bairro, cidade')
-        .eq('id', user.id)
-        .single();
-
-      if (userError) {
-        console.error('Erro ao obter dados do usuário:', userError);
-        setMensagemErro('Erro ao carregar seus dados. Tente novamente.');
-        setModalErro(true);
-        setFinalizando(false);
-        return;
-      }
-
-      const totalAmount = calcularTotal();
-
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert([
-          {
-            user_id: user.id,
-            buyer_name: userData.fullname || user.email,
-            buyer_email: userData.email,
-            buyer_phone: userData.phone,
-            buyer_cep: userData.cep,
-            buyer_rua: userData.rua,
-            buyer_numero: userData.numero,
-            buyer_bairro: userData.bairro,
-            buyer_cidade: userData.cidade,
-            total_amount: totalAmount
-          }
-        ])
-        .select();
-
-      if (orderError) {
-        console.error('Erro ao criar pedido:', orderError);
-        setMensagemErro('Erro ao criar o pedido. Tente novamente.');
-        setModalErro(true);
-        setFinalizando(false);
-        return;
-      }
-
-      const orderId = order[0].id;
-      setOrderId(orderId);
-
-      const orderItems = itensCarrinho.map(item => ({
-        order_id: orderId,
-        product_listing_id: item.productListingId,
-        product_name: item.nome,
-        store_id: item.storeId,
-        store_name: item.storeName,
-        price: item.preco,
-        quantity: item.quantidade,
-        subtotal: item.preco * item.quantidade
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) {
-        console.error('Erro ao adicionar itens do pedido:', itemsError);
-        setMensagemErro('Erro ao processar itens do pedido. Tente novamente.');
-        setModalErro(true);
-        setFinalizando(false);
-        return;
-      }
-
-      if (cartId) {
-        await cartService.clearCart(cartId);
-      }
-      setItensCarrinho([]);
-
-      setModalSucesso(true);
-
-    } catch (error) {
-      console.error('Erro ao finalizar compra:', error);
-      setMensagemErro('Erro ao finalizar compra. Tente novamente.');
-      setModalErro(true);
-    } finally {
-      setFinalizando(false);
-    }
+  const verificarPerfilCompleto = (userData) => {
+    const camposObrigatorios = ['phone', 'cep', 'cidade', 'bairro', 'rua', 'numero'];
+    const camposFaltando = camposObrigatorios.filter(campo => !userData[campo]);
+    return camposFaltando.length === 0;
   };
+
+  const finalizarCompra = async () => {
+  if (!user || itensCarrinho.length === 0) return;
+
+  setFinalizando(true);
+  try {
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('fullname, email, phone, cep, rua, numero, bairro, cidade')
+      .eq('id', user.id)
+      .single();
+
+    if (userError) {
+      console.error('Erro ao obter dados do usuário:', userError);
+      setMensagemErro('Erro ao carregar seus dados. Tente novamente.');
+      setModalErro(true);
+      setFinalizando(false);
+      return;
+    }
+
+    if (!verificarPerfilCompleto(userData)) {
+      setShowPerfilIncompleto(true);
+      setFinalizando(false);
+      return;
+    }
+
+    // Armazena dados e mostra modal de confirmação
+    setDadosUsuario(userData);
+    setShowConfirmacao(true);
+    setFinalizando(false);
+
+  } catch (error) {
+    console.error('Erro ao finalizar compra:', error);
+    setMensagemErro('Erro ao finalizar compra. Tente novamente.');
+    setModalErro(true);
+    setFinalizando(false);
+  }
+};
+
+const confirmarPedido = async () => {
+  setFinalizando(true);
+  setShowConfirmacao(false);
+
+  try {
+    const totalAmount = calcularTotal();
+
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert([
+        {
+          user_id: user.id,
+          buyer_name: dadosUsuario.fullname || user.email,
+          buyer_email: dadosUsuario.email,
+          buyer_phone: dadosUsuario.phone,
+          buyer_cep: dadosUsuario.cep,
+          buyer_rua: dadosUsuario.rua,
+          buyer_numero: dadosUsuario.numero,
+          buyer_bairro: dadosUsuario.bairro,
+          buyer_cidade: dadosUsuario.cidade,
+          total_amount: totalAmount
+        }
+      ])
+      .select();
+
+    if (orderError) {
+      console.error('Erro ao criar pedido:', orderError);
+      setMensagemErro('Erro ao criar o pedido. Tente novamente.');
+      setModalErro(true);
+      setFinalizando(false);
+      return;
+    }
+
+    const orderId = order[0].id;
+    setOrderId(orderId);
+
+    const orderItems = itensCarrinho.map(item => ({
+      order_id: orderId,
+      product_listing_id: item.productListingId,
+      product_name: item.nome,
+      store_id: item.storeId,
+      store_name: item.storeName,
+      price: item.preco,
+      quantity: item.quantidade,
+      subtotal: item.preco * item.quantidade
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems);
+
+    if (itemsError) {
+      console.error('Erro ao adicionar itens do pedido:', itemsError);
+      setMensagemErro('Erro ao processar itens do pedido. Tente novamente.');
+      setModalErro(true);
+      setFinalizando(false);
+      return;
+    }
+
+    if (cartId) {
+      await cartService.clearCart(cartId);
+    }
+    setItensCarrinho([]);
+    setModalSucesso(true);
+
+  } catch (error) {
+    console.error('Erro ao confirmar pedido:', error);
+    setMensagemErro('Erro ao confirmar pedido. Tente novamente.');
+    setModalErro(true);
+  } finally {
+    setFinalizando(false);
+  }
+};
 
   const handleFecharModalSucesso = () => {
     setModalSucesso(false);
@@ -232,6 +265,10 @@ const CarrinhoCompras = () => {
   const irParaLoja = (nomeLoja) => {
     const slug = createSlug(nomeLoja);
     navigate(`/loja/${slug}`);
+  };
+
+  const irParaPerfil = () => {
+    navigate('/perfil');
   };
 
   const agruparPorLoja = () => {
@@ -290,6 +327,89 @@ const CarrinhoCompras = () => {
         <h1>Carrinho de Compras</h1>
       </div>
 
+      {/* Modal de Perfil Incompleto */}
+      {showPerfilIncompleto && (
+        <div className="modal-perfil-incompleto">
+          <div className="modal-perfil-content">
+            <button
+              className="modal-perfil-fechar"
+              onClick={() => setShowPerfilIncompleto(false)}
+            >
+              ×
+            </button>
+            <div className="modal-perfil-icone">⚠️</div>
+            <h2>Complete seu Endereço</h2>
+            <div className="seta-animada">
+              <span>Clique aqui para completar</span>
+              <span className="seta">👇</span>
+            </div>
+            <button
+              className="btn btn-primary btn-lg"
+              onClick={irParaPerfil}
+            >
+              Completar Cadastro
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação */}
+{showConfirmacao && dadosUsuario && (
+  <div className="modal-perfil-incompleto">
+    <div className="modal-perfil-content" style={{ maxWidth: '600px' }}>
+      <button
+        className="modal-perfil-fechar"
+        onClick={() => setShowConfirmacao(false)}
+      >
+        ×
+      </button>
+      <div className="modal-perfil-icone">📋</div>
+      <h2>Confirme seus Dados</h2>
+      
+      <div className="campos-faltando" style={{ textAlign: 'left' }}>
+        <div style={{ marginBottom: '1rem' }}>
+          <strong style={{ color: '#667eea' }}>Nome:</strong>
+          <p style={{ margin: '0.25rem 0 0 0', color: '#1e293b' }}>{dadosUsuario.fullname}</p>
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <strong style={{ color: '#667eea' }}>Telefone:</strong>
+          <p style={{ margin: '0.25rem 0 0 0', color: '#1e293b' }}>{dadosUsuario.phone}</p>
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <strong style={{ color: '#667eea' }}>Endereço:</strong>
+          <p style={{ margin: '0.25rem 0 0 0', color: '#1e293b' }}>
+            {dadosUsuario.rua}, {dadosUsuario.numero}<br/>
+            {dadosUsuario.bairro} - {dadosUsuario.cidade}<br/>
+            CEP: {dadosUsuario.cep}
+          </p>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '1rem' }}>
+        <button
+          className="btn"
+          style={{ 
+            flex: 1,
+            background: '#94a3b8',
+            color: 'white'
+          }}
+          onClick={() => setShowConfirmacao(false)}
+        >
+          Cancelar
+        </button>
+        <button
+          className="btn"
+          style={{ flex: 1 }}
+          onClick={confirmarPedido}
+          disabled={finalizando}
+        >
+          {finalizando ? 'Processando...' : 'Confirmar Pedido'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
       {itensCarrinho.length === 0 ? (
         <div className="carrinho-vazio">
           <div className="carrinho-vazio-icone">🛒</div>
@@ -302,7 +422,7 @@ const CarrinhoCompras = () => {
             {Object.entries(agruparPorLoja()).map(([storeId, { storeName, items }]) => (
               <div key={storeId} className="loja-grupo">
                 <div className="loja-cabecalho">
-                  <h2 className="loja-nome">🏪 {storeName}</h2>
+                  <h2 className="loja-nome2">{storeName}</h2>
                 </div>
                 <div className="loja-produtos">
                   {items.map(item => (
@@ -314,7 +434,7 @@ const CarrinhoCompras = () => {
                       <img
                         src={item.imagem}
                         alt={item.nome}
-                        className="item-imagem"
+                        className="item-imagem2"
                       />
                       <div className="item-detalhes">
 
@@ -324,7 +444,8 @@ const CarrinhoCompras = () => {
                             <p className="item-preco">
                               R$ {item.preco.toFixed(2).replace('.', ',')}
                             </p>
-                            <p className="item-preco2">(R$ {(item.preco * item.quantidade).toFixed(2).replace('.', ',')})</p>                            </div>
+                            <p className="item-preco2">(R$ {(item.preco * item.quantidade).toFixed(2).replace('.', ',')})</p>
+                          </div>
                         </div>
                         <div className="item-controles">
                           <div className="quantidade-controles">
@@ -412,14 +533,11 @@ const CarrinhoCompras = () => {
                 {orderId}
               </p>
             </div>
-            <p className="text-sm text-gray-600 mb-6">
-              Você receberá um email de confirmação em breve.
-            </p>
             <button
               onClick={handleFecharModalSucesso}
               className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors"
             >
-              Continuar Comprando
+              Voltar
             </button>
           </div>
         </div>

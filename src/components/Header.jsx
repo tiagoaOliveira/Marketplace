@@ -4,11 +4,10 @@ import { Link } from 'react-router-dom'
 import './Header.css'
 import SearchSystem from './SearchSystem'
 import Produtos from './Produtos'
-import Categorias from './Categorias'
 import { supabase } from '../lib/supabase'
+import Carrossel from "./Carrossel"
 
 function Header({ user }) {
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState('Todos');
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [pedidosPendentes, setPedidosPendentes] = useState(0);
@@ -17,15 +16,15 @@ function Header({ user }) {
     if (user) {
       carregarPedidosPendentes();
       
-      // Configurar listener Realtime para mudanças em order_items
+      // Configurar listener Realtime para mudanças em orders
       const subscription = supabase
-        .channel('order_items_changes')
+        .channel('orders_changes')
         .on(
           'postgres_changes',
           {
             event: '*', // Escuta INSERT, UPDATE, DELETE
             schema: 'public',
-            table: 'order_items'
+            table: 'orders'
           },
           (payload) => {
             // Recarregar contagem quando houver qualquer mudança
@@ -49,30 +48,25 @@ function Header({ user }) {
         .eq('user_id', user.id);
 
       if (stores && stores.length > 0) {
-        // É vendedor - contar itens pendentes
+        // É vendedor - contar orders que têm itens pendentes da loja
         const storeIds = stores.map(s => s.id);
         
-        const { data: items, error } = await supabase
+        // Buscar order_ids únicos com itens pendentes
+        const { data: items } = await supabase
           .from('order_items')
-          .select('id')
+          .select('order_id')
           .in('store_id', storeIds)
           .eq('status', 'pendente');
 
-        if (!error && items) {
-          setPedidosPendentes(items.length);
+        if (items) {
+          // Contar orders únicas
+          const uniqueOrders = [...new Set(items.map(item => item.order_id))];
+          setPedidosPendentes(uniqueOrders.length);
         }
       }
     } catch (error) {
       console.error('Erro ao carregar pedidos pendentes:', error);
     }
-  };
-
-  const handleCategoriaSelect = (categoria) => {
-    setCategoriaSelecionada(categoria);
-  };
-
-  const handleMostrarTodos = () => {
-    setCategoriaSelecionada('Todos');
   };
 
   const handleProductSelect = (produto) => {
@@ -144,15 +138,10 @@ function Header({ user }) {
             onStoreSelect={handleStoreSelect}
           />
         </div>
+        <Carrossel />
       </div>
 
-      <Categorias
-        onCategoriaSelect={handleCategoriaSelect}
-        categoriaSelecionada={categoriaSelecionada}
-      />
-
       <Produtos
-        categoriaFiltro={categoriaSelecionada === 'Todos' ? null : categoriaSelecionada}
         produtoSelecionado={produtoSelecionado}
         modalAberto={modalAberto}
         onFecharModal={fecharModal}

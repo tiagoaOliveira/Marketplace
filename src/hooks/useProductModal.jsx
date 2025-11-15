@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 
-const ProductModalComponent = ({ produto, onClose, onStoreClick, showControls, renderControls }) => {
+const ProductModalComponent = memo(({ produto, onClose, onStoreClick, showControls, renderControls }) => {
   const [imagemAtual, setImagemAtual] = useState(0);
 
   useEffect(() => {
@@ -78,9 +78,6 @@ const ProductModalComponent = ({ produto, onClose, onStoreClick, showControls, r
           <div className="modal-info">
             <h2 className="modal-titulo">{produto.nome}</h2>
 
-            <p className="modal-descricao">
-              {produto.descricao || 'Descrição não disponível'}
-            </p>
             <p className="modal-loja">
               Vendido por: <strong
                 onClick={() => {
@@ -89,9 +86,9 @@ const ProductModalComponent = ({ produto, onClose, onStoreClick, showControls, r
                     onClose();
                   }
                 }}
-              >
+              > 
                 {produto.loja || produto.storeName}
-              </strong>
+              </strong> (Ver mais)
             </p>
 
             <p className="modal-preco">
@@ -114,7 +111,9 @@ const ProductModalComponent = ({ produto, onClose, onStoreClick, showControls, r
   );
 
   return createPortal(modalContent, document.body);
-};
+});
+
+ProductModalComponent.displayName = 'ProductModalComponent';
 
 export const useProductModal = () => {
   const [modalAberto, setModalAberto] = useState(false);
@@ -132,17 +131,17 @@ export const useProductModal = () => {
     };
   }, [modalAberto]);
 
-  const abrirModal = (produto) => {
+  const abrirModal = useCallback((produto) => {
     setProdutoSelecionado(produto);
     setModalAberto(true);
-  };
+  }, []);
 
-  const fecharModal = () => {
+  const fecharModal = useCallback(() => {
     setModalAberto(false);
     setProdutoSelecionado(null);
-  };
+  }, []);
 
-  const ProductModal = (props) => {
+  const ProductModal = useCallback((props) => {
     if (!modalAberto || !produtoSelecionado) return null;
     
     return (
@@ -152,7 +151,7 @@ export const useProductModal = () => {
         {...props}
       />
     );
-  };
+  }, [modalAberto, produtoSelecionado, fecharModal]);
 
   return {
     modalAberto,

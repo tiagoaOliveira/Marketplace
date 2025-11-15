@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listingsService, cartService } from '../lib/services';
 import { auth } from '../lib/supabase';
@@ -125,7 +125,7 @@ const ProdutosShowcase = ({
     }
   };
 
-  const adicionarAoCarrinho = async (listing) => {
+  const adicionarAoCarrinho = useCallback(async (listing) => {
     if (!user) {
       fecharModal();
       showNotification('Faça login para adicionar produtos ao carrinho', 'warning');
@@ -163,9 +163,9 @@ const ProdutosShowcase = ({
     } catch (error) {
       console.error('Erro ao adicionar ao carrinho:', error);
     }
-  };
+  }, [user, fecharModal, showNotification]);
 
-  const removerDoCarrinho = async (listing) => {
+  const removerDoCarrinho = useCallback(async (listing) => {
     if (!user) return;
 
     try {
@@ -197,7 +197,7 @@ const ProdutosShowcase = ({
     } catch (error) {
       console.error('Erro ao remover do carrinho:', error);
     }
-  };
+  }, [user]);
 
   const createSlug = (name) => {
     return name
@@ -208,17 +208,42 @@ const ProdutosShowcase = ({
       .replace(/^-+|-+$/g, '');
   };
 
-  const irParaLoja = (nomeLoja) => {
+  const irParaLoja = useCallback((nomeLoja) => {
     const slug = createSlug(nomeLoja);
     navigate(`/loja/${slug}`);
-  };
+  }, [navigate]);
 
-  const handleCardClick = (e, produto) => {
+  const handleCardClick = useCallback((e, produto) => {
     if (e.target.closest('.produto-controles')) {
       return;
     }
     abrirModal(produto);
-  };
+  }, [abrirModal]);
+
+  // Memoizar os controles para evitar re-renders desnecessários
+  const renderControls = useCallback((produto) => (
+    <>
+      <button
+        className="btn-carrinho btn-menos"
+        onClick={() => removerDoCarrinho(produto)}
+        disabled={!quantidades[produto.id] || quantidades[produto.id] === 0}
+      >
+        -
+      </button>
+
+      <span className="quantidade-produto">
+        {quantidades[produto.id] || 0}
+      </span>
+
+      <button
+        className="btn-carrinho btn-mais"
+        onClick={() => adicionarAoCarrinho(produto)}
+        disabled={produto.stock === 0 || (quantidades[produto.id] >= produto.stock)}
+      >
+        +
+      </button>
+    </>
+  ), [quantidades, adicionarAoCarrinho, removerDoCarrinho]);
 
   if (loading) {
     return (
@@ -300,29 +325,7 @@ const ProdutosShowcase = ({
       <ProductModal
         onStoreClick={irParaLoja}
         showControls={true}
-        renderControls={(produto) => (
-          <>
-            <button
-              className="btn-carrinho btn-menos"
-              onClick={() => removerDoCarrinho(produto)}
-              disabled={!quantidades[produto.id] || quantidades[produto.id] === 0}
-            >
-              -
-            </button>
-
-            <span className="quantidade-produto">
-              {quantidades[produto.id] || 0}
-            </span>
-
-            <button
-              className="btn-carrinho btn-mais"
-              onClick={() => adicionarAoCarrinho(produto)}
-              disabled={produto.stock === 0 || (quantidades[produto.id] >= produto.stock)}
-            >
-              +
-            </button>
-          </>
-        )}
+        renderControls={renderControls}
       />
     </div>
   );
