@@ -224,23 +224,3 @@
     font-size: 12px;
   }
 }
-
-@media (max-width: 480px) {
-  .categorias-container {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-  }
-
-  .categoria-card {
-    padding: 0.75rem 0.25rem;
-  }
-
-  .categoria-icone {
-    font-size: 36px;
-    height: 50px;
-  }
-
-  .categoria-nome {
-    font-size: 12px;
-  }
-}

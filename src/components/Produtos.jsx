@@ -5,6 +5,7 @@ import { auth } from '../lib/supabase';
 import { useNotification } from '../hooks/useNotification';
 import { useProductModal } from '../hooks/useProductModal.jsx';
 import './produtos.css';
+import { useSlug } from '../hooks/useSlug';
 
 const ProdutosShowcase = ({
   categoriaFiltro,
@@ -15,6 +16,7 @@ const ProdutosShowcase = ({
   const navigate = useNavigate();
   const { notification, showNotification } = useNotification();
   const { abrirModal, fecharModal, ProductModal } = useProductModal();
+  const { createSlug } = useSlug();
 
   const [produtos, setProdutos] = useState([]);
   const [produtosFiltrados, setProdutosFiltrados] = useState([]);
@@ -198,15 +200,6 @@ const ProdutosShowcase = ({
       console.error('Erro ao remover do carrinho:', error);
     }
   }, [user]);
-
-  const createSlug = (name) => {
-    return name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  };
 
   const irParaLoja = useCallback((nomeLoja) => {
     const slug = createSlug(nomeLoja);

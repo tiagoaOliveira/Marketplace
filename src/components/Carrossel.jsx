@@ -11,17 +11,21 @@ const Carrossel = () => {
     'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=250&h=100&fit=crop'
   ];
 
-  // Duplicar imagens para efeito infinito
   const duplicatedImages = [...images, ...images];
 
   return (
-    <div className="slider">
-      <div className="slide-track">
-        {duplicatedImages.map((image, index) => (
-          <div key={index} className="slide">
-            <img src={image} height="100" width="250" alt={`Slide ${index + 1}`} />
-          </div>
-        ))}
+    <div>
+      <h2 className='carrossel-title'>
+        Lojas Próximas
+      </h2>
+      <div className="slider">
+        <div className="slide-track">
+          {duplicatedImages.map((image, index) => (
+            <div key={index} className="slide">
+              <img src={image} height="100" width="250" alt={`Slide ${index + 1}`} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

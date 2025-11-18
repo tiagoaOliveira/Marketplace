@@ -6,16 +6,18 @@ import SearchSystem from './SearchSystem'
 import Produtos from './Produtos'
 import { supabase } from '../lib/supabase'
 import Carrossel from "./Carrossel"
+import { useSlug } from '../hooks/useSlug' // 1. Importação do hook
 
 function Header({ user }) {
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [pedidosPendentes, setPedidosPendentes] = useState(0);
+  const { createSlug } = useSlug(); // 2. Uso do hook
 
   useEffect(() => {
     if (user) {
       carregarPedidosPendentes();
-      
+
       // Configurar listener Realtime para mudanças em orders
       const subscription = supabase
         .channel('orders_changes')
@@ -41,31 +43,18 @@ function Header({ user }) {
 
   const carregarPedidosPendentes = async () => {
     try {
-      // Verificar se o usuário é vendedor
-      const { data: stores } = await supabase
-        .from('stores')
-        .select('id')
-        .eq('user_id', user.id);
+      const { data, error } = await supabase.functions.invoke('get-pending-orders-count', {
+        body: {}
+      })
 
-      if (stores && stores.length > 0) {
-        // É vendedor - contar orders que têm itens pendentes da loja
-        const storeIds = stores.map(s => s.id);
-        
-        // Buscar order_ids únicos com itens pendentes
-        const { data: items } = await supabase
-          .from('order_items')
-          .select('order_id')
-          .in('store_id', storeIds)
-          .eq('status', 'pendente');
-
-        if (items) {
-          // Contar orders únicas
-          const uniqueOrders = [...new Set(items.map(item => item.order_id))];
-          setPedidosPendentes(uniqueOrders.length);
-        }
+      if (error) {
+        console.error('Erro ao carregar pendentes:', error)
+        return
       }
+
+      setPedidosPendentes(data?.count || 0)
     } catch (error) {
-      console.error('Erro ao carregar pedidos pendentes:', error);
+      console.error('Erro ao carregar pedidos pendentes:', error)
     }
   };
 
@@ -87,18 +76,7 @@ function Header({ user }) {
     setModalAberto(true);
   };
 
-  // Callback quando uma loja é clicada na busca
   const handleStoreSelect = (loja) => {
-    // Navegar para a loja
-    const createSlug = (name) => {
-      return name
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-    };
-
     const slug = createSlug(loja.name);
     window.location.href = `/loja/${slug}`;
   };

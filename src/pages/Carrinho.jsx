@@ -6,10 +6,12 @@ import { useProductModal } from '../hooks/useProductModal.jsx';
 import './Carrinho.css';
 import { RxArrowLeft } from "react-icons/rx";
 import { FaTrash } from "react-icons/fa";
+import { useSlug } from '../hooks/useSlug';
 
 const CarrinhoCompras = () => {
   const navigate = useNavigate();
   const { abrirModal, ProductModal } = useProductModal();
+  const { createSlug } = useSlug();
 
   const [itensCarrinho, setItensCarrinho] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -251,15 +253,6 @@ const confirmarPedido = async () => {
       return;
     }
     abrirModal(item);
-  };
-
-  const createSlug = (name) => {
-    return name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
   };
 
   const irParaLoja = (nomeLoja) => {

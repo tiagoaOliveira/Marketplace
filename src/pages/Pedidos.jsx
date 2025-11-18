@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import './Pedidos.css'
+import { Eye, EyeOff } from 'lucide-react' // 1. Importar ícones Lucide
 
 const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
     const navigate = useNavigate()
@@ -14,6 +15,8 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
     const [modalAjuda, setModalAjuda] = useState(false)
     const [modalCancelar, setModalCancelar] = useState({ aberto: false, itemId: null })
     const [pedidosPendentes, setPedidosPendentes] = useState(0)
+    // 2. Novo estado para controlar a expansão do endereço
+    const [enderecoExpandido, setEnderecoExpandido] = useState({}) 
 
     useEffect(() => {
         if (user) {
@@ -29,7 +32,7 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
 
     useEffect(() => {
         if (isVendor && pedidos.length > 0) {
-            const ordersPendentes = pedidos.filter(pedido => 
+            const ordersPendentes = pedidos.filter(pedido =>
                 pedido.order_items?.some(item => item.status === 'pendente')
             )
             setPedidosPendentes(ordersPendentes.length)
@@ -50,11 +53,11 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
         }
     }
 
-    const carregarPedidos = async () => {
+const carregarPedidos = async () => {
         try {
             setLoading(true)
 
-            // Sempre carregar pedidos de vendedor se for vendedor
+            // Verificar se é vendedor
             const { data: stores } = await supabase
                 .from('stores')
                 .select('id')
@@ -63,65 +66,32 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
             const ehVendedor = stores && stores.length > 0
             setIsVendor(ehVendedor)
 
-            if (ehVendedor) {
+            // Usar Edge Function para carregar pedidos (mais seguro)
+            const { data: result, error } = await supabase.functions.invoke('get-orders', {
+                body: { view: visao }
+            })
+
+            if (error) {
+                console.error('Erro ao chamar Edge Function:', error)
+                setPedidos([])
+            } else {
+                setPedidos(result?.data || [])
+            }
+            
+            // Se é vendedor, contar pendentes para badge (mesmo na visão comprador)
+            if (ehVendedor && visao === 'comprador') {
                 const storeIds = stores.map(s => s.id)
-
-                const { data: items } = await supabase
+                const { data: itemsPendentes } = await supabase
                     .from('order_items')
-                    .select('*, product_listings(products(images))')
+                    .select('order_id')
                     .in('store_id', storeIds)
-                    .order('created_at', { ascending: false })
+                    .eq('status', 'pendente')
 
-                if (items?.length) {
-                    const orderIds = [...new Set(items.map(item => item.order_id))]
-
-                    const { data: orders } = await supabase
-                        .from('orders')
-                        .select('*')
-                        .in('id', orderIds)
-                        .order('created_at', { ascending: false })
-
-                    const pedidosVendedor = orders?.map(order => ({
-                        ...order,
-                        order_items: items.filter(item => item.order_id === order.id)
-                    })) || []
-
-                    // Sempre carregar pedidos do vendedor independente da visão
-                    if (visao === 'vendedor') {
-                        setPedidos(pedidosVendedor)
-                        setLoading(false)
-                        return
-                    }
-                    
-                    // Se estiver na visão comprador, carregar pedidos de comprador mas manter contagem
-                    if (visao === 'comprador') {
-                        const { data: pedidosComprador } = await supabase
-                            .from('orders')
-                            .select('*, order_items(*, product_listings(products(images)))')
-                            .eq('user_id', user.id)
-                            .order('created_at', { ascending: false })
-
-                        setPedidos(pedidosComprador || [])
-                        
-                        // Contar pedidos pendentes dos pedidos de vendedor
-                        const ordersPendentes = pedidosVendedor.filter(pedido => 
-                            pedido.order_items?.some(item => item.status === 'pendente')
-                        )
-                        setPedidosPendentes(ordersPendentes.length)
-                        setLoading(false)
-                        return
-                    }
+                if (itemsPendentes) {
+                    const uniqueOrders = [...new Set(itemsPendentes.map(item => item.order_id))]
+                    setPedidosPendentes(uniqueOrders.length)
                 }
             }
-
-            // Se não for vendedor, carregar como comprador
-            const { data } = await supabase
-                .from('orders')
-                .select('*, order_items(*, product_listings(products(images)))')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
-
-            setPedidos(data || [])
         } catch (error) {
             console.error('Erro ao carregar pedidos:', error)
         } finally {
@@ -135,6 +105,14 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
             [pedidoId]: !prev[pedidoId]
         }))
     }
+    
+    // 3. Função para alternar a expansão do endereço
+    const toggleEnderecoExpanded = (pedidoId) => {
+        setEnderecoExpandido(prev => ({
+            ...prev,
+            [pedidoId]: !prev[pedidoId]
+        }))
+    }
 
     const confirmarCancelamento = async () => {
         try {
@@ -142,6 +120,8 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
                 return
             }
 
+            // Usando Edge Function ou um RPC se for para lógica mais complexa,
+            // mas aqui mantemos o update direto no `order_items`
             const { error } = await supabase
                 .from('order_items')
                 .update({
@@ -177,6 +157,7 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
 
     const marcarPedidoCompleto = async (pedidoId) => {
         try {
+            // Usando Edge Function ou RPC seria ideal para garantir a regra de negócio
             const { error } = await supabase
                 .from('orders')
                 .update({ status: 'completo' })
@@ -200,7 +181,9 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
         if (filtro === 'todos') return true
 
         if (visao === 'vendedor') {
-            return pedido.status === filtro
+            // Como vendedor, filtrar por status do pedido é menos comum,
+            // mas manteremos o filtro para a estrutura principal do pedido
+            return pedido.status === filtro 
         } else {
             if (filtro === 'pendente') {
                 return pedido.status === 'pendente'
@@ -210,6 +193,24 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
             return false
         }
     })
+
+    // 4. Função para agrupar itens por loja
+    const agruparItensPorLoja = (orderItems) => {
+        if (!orderItems) return {}
+        return orderItems.reduce((acc, item) => {
+            const loja = item.store_name || 'Loja Desconhecida'
+            if (!acc[loja]) {
+                acc[loja] = {
+                    store_name: loja,
+                    items: [],
+                    total: 0
+                }
+            }
+            acc[loja].items.push(item)
+            acc[loja].total += parseFloat(item.subtotal) || 0
+            return acc
+        }, {})
+    }
 
     const formatarData = (data) => {
         return new Date(data).toLocaleDateString('pt-BR', {
@@ -247,6 +248,7 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
                 </button>
             </div>
 
+            {/* Modal Ajuda */}
             {modalAjuda && (
                 <div className="modal-overlay" onClick={() => setModalAjuda(false)}>
                     <div className="modal-conteudo" onClick={(e) => e.stopPropagation()}>
@@ -263,21 +265,23 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
                 </div>
             )}
 
+            {/* Modal Cancelamento */}
             {modalCancelar.aberto && (
                 <div className="modal-overlay" onClick={() => setModalCancelar({ aberto: false, itemId: null })}>
                     <div className="modal-conteudo" onClick={(e) => e.stopPropagation()}>
                         <h3>Confirmar Cancelamento</h3>
                         <p>Tem certeza que deseja cancelar este item?</p>
                         <p>Esta ação não poderá ser desfeita.</p>
+                        <p>Envie uma mensagem ao comprador para evitar desentendimentos.</p>
                         <div className="modal-botoes">
-                            <button 
-                                className="btn-modal btn-modal-fechar" 
+                            <button
+                                className="btn-modal btn-modal-fechar"
                                 onClick={() => setModalCancelar({ aberto: false, itemId: null })}
                             >
                                 Não, voltar
                             </button>
-                            <button 
-                                className="btn-modal btn-modal-confirmar" 
+                            <button
+                                className="btn-modal btn-modal-confirmar"
                                 onClick={confirmarCancelamento}
                             >
                                 Sim, cancelar
@@ -287,6 +291,7 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
                 </div>
             )}
 
+            {/* Alternador de Visão */}
             {isVendor && (
                 <div className="visao-alternador">
                     <button
@@ -310,29 +315,20 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
                 </div>
             )}
 
+            {/* Filtros */}
             <div className="pedidos-filtros">
-                {visao === 'comprador'
-                    ? ['todos', 'pendente', 'completo'].map(status => (
-                        <button
-                            key={status}
-                            className={`filtro-btn ${filtro === status ? 'ativo' : ''}`}
-                            onClick={() => setFiltro(status)}
-                        >
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </button>
-                    ))
-                    : ['todos', 'pendente', 'completo'].map(status => (
-                        <button
-                            key={status}
-                            className={`filtro-btn ${filtro === status ? 'ativo' : ''}`}
-                            onClick={() => setFiltro(status)}
-                        >
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </button>
-                    ))
-                }
+                {['todos', 'pendente', 'completo'].map(status => (
+                    <button
+                        key={status}
+                        className={`filtro-btn ${filtro === status ? 'ativo' : ''}`}
+                        onClick={() => setFiltro(status)}
+                    >
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </button>
+                ))}
             </div>
 
+            {/* Lista de Pedidos */}
             {pedidosFiltrados.length === 0 ? (
                 <div className="pedidos-vazio">
                     <div className="pedidos-vazio-icone">📦</div>
@@ -340,7 +336,11 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
                 </div>
             ) : (
                 <div className="pedidos-lista">
-                    {pedidosFiltrados.map(pedido => (
+                    {pedidosFiltrados.map(pedido => {
+                        const lojasAgrupadas = agruparItensPorLoja(pedido.order_items)
+                        const isEnderecoExpanded = enderecoExpandido[pedido.id]
+                        
+                        return (
                         <div key={pedido.id} className="pedido-card">
                             <div className="pedido-header">
                                 <button
@@ -363,83 +363,115 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
                                             className="btn-marcar-completo"
                                             onClick={() => marcarPedidoCompleto(pedido.id)}
                                         >
-                                             Marcar como Entregue
+                                            Marcar como Entregue
                                         </button>
                                     )}
                                 </div>
                             </div>
 
+                            {/* Conteúdo expandido do Pedido */}
                             {expandidos[pedido.id] && (
                                 <div className="pedido-expandido">
+                                    {/* Dados do Comprador (Endereço Expansível) */}
                                     <div className="pedido-endereco">
-                                        <h4>Dados do Comprador</h4>
-                                        <p><strong>Nome:</strong> {pedido.buyer_name}</p>
-                                        <p><strong>Telefone:</strong> {pedido.buyer_phone || 'Não informado'}</p>
-                                        <p>
-                                            <strong>Endereço:</strong> {pedido.buyer_rua}, {pedido.buyer_numero}
-                                            {pedido.buyer_bairro && ` - ${pedido.buyer_bairro}`}
-                                            {pedido.buyer_cidade && ` - ${pedido.buyer_cidade}`}
-                                            {pedido.buyer_cep && ` - ${pedido.buyer_cep}`}
-                                        </p>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <h4>Dados do Comprador</h4>
+                                            <button 
+                                                className="pedido-expandir" 
+                                                onClick={() => toggleEnderecoExpanded(pedido.id)}
+                                                // Reutilizando o estilo de expansão
+                                                style={{ border: 'none', background: 'transparent' }} 
+                                                title={isEnderecoExpanded ? 'Ocultar Endereço' : 'Mostrar Endereço'}
+                                            >
+                                                {isEnderecoExpanded ? <EyeOff size={20} className="arrow" /> : <Eye size={20} className="arrow" />}
+                                            </button>
+                                        </div>
+                                        
+                                        {isEnderecoExpanded && (
+                                            <div style={{ paddingBottom: '1rem' }}>
+                                                <p><strong>Nome:</strong> {pedido.buyer_name}</p>
+                                                <p><strong>Telefone:</strong> {pedido.buyer_phone || 'Não informado'}</p>
+                                                <p>
+                                                    <strong>Endereço:</strong> {pedido.buyer_rua}, {pedido.buyer_numero}
+                                                    {pedido.buyer_bairro && ` - ${pedido.buyer_bairro}`}
+                                                    {pedido.buyer_cidade && ` - ${pedido.buyer_cidade}`}
+                                                    {pedido.buyer_cep && ` - ${pedido.buyer_cep}`}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
 
+                                    {/* Itens do Pedido Agrupados por Loja */}
                                     <div className="pedido-itens">
-                                        <h4>{visao === 'vendedor' ? 'Seus Produtos neste Pedido' : 'Itens do Pedido'}
-                                        </h4>
-                                        {pedido.order_items?.map(item => (
-                                            <div key={item.id} className="item-expandido">
-                                                <div className='item-top'>
-                                                    {item.product_listings?.products?.images?.[0] && (
-                                                        <img
-                                                            src={item.product_listings.products.images[0]}
-                                                            alt={item.product_name}
-                                                            className="item-imagem"
-                                                        />
-                                                    )}
-                                                    <span className="item-nome">{item.product_name}</span>
-                                                </div>
+                                        
+                                        {Object.values(lojasAgrupadas).map((loja, index) => (
+                                            <div className='pedido-produtos' key={loja.store_name} >
+                                                <h5 
+                                                    onClick={() => irParaLoja(loja.store_name)}
+                                                    title={`Ir para a loja ${loja.store_name}`}
+                                                >
+                                                 {loja.store_name} ({loja.items.length} item{loja.items.length > 1 ? 's' : ''})
+                                                </h5>
+                                                
+                                                {loja.items.map(item => (
+                                                    <div key={item.id} className="item-expandido">
+                                                        <div className='item-top'>
+                                                            {item.product_listings?.products?.images?.[0] && (
+                                                                <img
+                                                                    src={item.product_listings.products.images[0]}
+                                                                    alt={item.product_name}
+                                                                    className="item-imagem"
+                                                                />
+                                                            )}
+                                                            <span className="item-nome">{item.product_name}</span>
+                                                        </div>
 
-                                                <div className="item-info">
-                                                    <div className="item-status-container">
-                                                        <span
-                                                            className={`item-status item-status-${item.status}`}
-                                                        >
-                                                            {item.status.toUpperCase()}
-                                                        </span>
-                                                        <span
-                                                            className="item-loja item-loja-clicavel"
-                                                            onClick={() => irParaLoja(item.store_name)}
-                                                        >
-                                                            {item.store_name}
-                                                        </span>
-                                                        {item.status_updated_at && (
-                                                            <span className="item-status-data">
-                                                                {new Date(item.status_updated_at).toLocaleDateString('pt-BR')}
+                                                        <div className="item-info">
+                                                            <div className="item-status-container">
+                                                                <span
+                                                                    className={`item-status item-status-${item.status}`}
+                                                                >
+                                                                    {item.status.toUpperCase()}
+                                                                </span>
+                                                                {item.status_updated_at && (
+                                                                    <span className="item-status-data">
+                                                                        {new Date(item.status_updated_at).toLocaleDateString('pt-BR')}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="item-dados">
+                                                            <span>{item.quantity}x</span>
+                                                            <span>R$ {parseFloat(item.price).toFixed(2).replace('.', ',')}</span>
+                                                            <span className="item-subtotal">
+                                                                R$ {parseFloat(item.subtotal).toFixed(2).replace('.', ',')}
                                                             </span>
+                                                        </div>
+                                                        {visao === 'vendedor' && item.status === 'pendente' && (
+                                                            <button
+                                                                className="btn-status-cancelado"
+                                                                onClick={() => setModalCancelar({ aberto: true, itemId: item.id })}
+                                                            >
+                                                                ✕ Cancelar
+                                                            </button>
                                                         )}
                                                     </div>
-                                                </div>
-                                                <div className="item-dados">
-                                                    <span>{item.quantity}x</span>
-                                                    <span>R$ {parseFloat(item.price).toFixed(2).replace('.', ',')}</span>
-                                                    <span className="item-subtotal">
-                                                        R$ {parseFloat(item.subtotal).toFixed(2).replace('.', ',')}
+                                                ))}
+
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9' }}>
+                                                    <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '15px' }}>
+                                                        Subtotal:
+                                                    </span>
+                                                    <span className="item-subtotal" style={{ marginLeft: '1rem' }}>
+                                                        R$ {loja.total.toFixed(2).replace('.', ',')}
                                                     </span>
                                                 </div>
-                                                {visao === 'vendedor' && item.status === 'pendente' && (
-                                                    <button
-                                                        className="btn-status-cancelado"
-                                                        onClick={() => setModalCancelar({ aberto: true, itemId: item.id })}
-                                                    >
-                                                        ✕ Cancelar
-                                                    </button>
-                                                )}
                                             </div>
                                         ))}
                                     </div>
-
+                                    
                                     <div className="pedido-total-expandido">
-                                        <span>{visao === 'vendedor' ? 'Total da compra:' : 'Total do Pedido:'}</span>
+                                        <span>Total do Pedido:</span>
                                         <span>
                                             R$ {pedido.order_items?.reduce((sum, item) => sum + parseFloat(item.subtotal), 0).toFixed(2).replace('.', ',')}
                                         </span>
@@ -447,7 +479,7 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
                                 </div>
                             )}
                         </div>
-                    ))}
+                    )})}
                 </div>
             )}
         </div>

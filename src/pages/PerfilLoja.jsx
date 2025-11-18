@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useNotification } from '../hooks/useNotification';
 import { useProductModal } from '../hooks/useProductModal.jsx';
 import './PerfilLoja.css';
-import '../components/Produtos'; // Importa estilos compartilhados
+import '../components/Produtos'; 
 import { RxArrowLeft } from "react-icons/rx";
 
 const PerfilLoja = () => {

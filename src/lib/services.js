@@ -61,6 +61,80 @@ async getProducts() {
   }
 }
 
+// Função para buscar coordenadas via CEP (ViaCEP + Nominatim)
+export const geoService = {
+  // Buscar coordenadas por CEP
+  async getCoordinatesFromCEP(cep) {
+    try {
+      const { data, error } = await supabase.functions.invoke('geocode', {
+        body: { cep: cep.replace(/\D/g, '') }
+      });
+
+      if (error) {
+        console.error('Erro da Edge Function:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar coordenadas:', error);
+      return null;
+    }
+  },
+
+  // Salvar localização do usuário
+  async updateUserLocation(userId, cep) {
+    console.log('updateUserLocation chamado:', { userId, cep });
+    
+    const coords = await this.getCoordinatesFromCEP(cep);
+    if (!coords) {
+      console.error('Não foi possível obter coordenadas');
+      return { error: 'Não foi possível obter as coordenadas' };
+    }
+
+    console.log('Coordenadas obtidas:', coords);
+
+    const { data, error } = await supabase.rpc('update_user_location', {
+      p_user_id: userId,
+      p_longitude: coords.longitude,
+      p_latitude: coords.latitude
+    });
+
+    console.log('Resultado update location:', error ? error : 'sucesso', data);
+
+    return { error: error?.message, coords, data };
+  },
+
+  // Salvar localização da loja usando CEP do endereço
+  async updateStoreLocation(storeId, address) {
+    console.log('updateStoreLocation chamado:', { storeId, address });
+    
+    if (address.zip_code) {
+      const coords = await this.getCoordinatesFromCEP(address.zip_code);
+      
+      if (!coords) {
+        console.error('Não foi possível obter coordenadas');
+        return { error: 'Não foi possível obter as coordenadas' };
+      }
+
+      console.log('Coordenadas obtidas:', coords);
+
+      const { data, error } = await supabase.rpc('update_store_location', {
+        p_store_id: storeId,
+        p_longitude: coords.longitude,
+        p_latitude: coords.latitude
+      });
+
+      console.log('Resultado update location:', error ? error : 'sucesso', data);
+      console.log('Data completo:', JSON.stringify(data, null, 2));
+
+      return { error: error?.message, coords, data };
+    }
+
+    return { error: 'CEP não fornecido' };
+  }
+};
+
 // ========================
 // Serviços de Listings (produtos de lojas)
 // ========================

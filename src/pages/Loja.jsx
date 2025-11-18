@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { storesService, productsService } from '../lib/services';
+import { storesService, geoService } from '../lib/services';
 import { supabase } from '../lib/supabase';
 import { useSearch } from '../hooks/useSearch';
 import { useCatalogSearch } from '../hooks/useCatalogSearch';
@@ -11,12 +11,15 @@ import { X } from 'lucide-react';
 import { RxArrowLeft } from "react-icons/rx";
 import { Notification } from '../components/Notification';
 import { useNotification } from '../hooks/useNotification';
+import StoreForm from './StoreForm'; // Importa o novo componente
 import './Loja.css';
+import { useSlug } from '../hooks/useSlug';
 
 const Stores = () => {
   const { notification, showNotification, hideNotification } = useNotification();
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { createSlug } = useSlug();
 
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +46,8 @@ const Stores = () => {
 
   const [formData, setFormData] = useState({
     name: '', business_name: '', description: '', category: '', cnpj: '', email: '', phone: '',
-    address: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zip_code: '' }
+    address: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zip_code: '' },
+    business_hours: {}
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -147,13 +151,24 @@ const Stores = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    if (name.startsWith('address.')) {
+
+    if (name === 'business_hours') {
+      setFormData(prev => ({ ...prev, business_hours: value }));
+    }
+    else if (name.startsWith('address.')) {
       const field = name.split('.')[1];
-      setFormData(prev => ({ ...prev, address: { ...prev.address, [field]: value } }));
-    } else {
+      setFormData(prev => ({
+        ...prev,
+        address: { ...prev.address, [field]: value }
+      }));
+    }
+    else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
-    if (formErrors[name]) setFormErrors(prev => ({ ...prev, [name]: '' }));
+
+    if (formErrors[name]) {
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const validateForm = () => {
@@ -175,15 +190,101 @@ const Stores = () => {
     }
     setIsSubmitting(true);
     setFormErrors({});
+
     try {
-      const storeData = { ...formData, user_id: user.id, address: formData.address.street ? formData.address : null };
       let result;
-      if (editingStore) result = await storesService.updateStore(editingStore.id, storeData);
-      else result = await storesService.createStore(storeData);
-      if (result.error) {
-        setFormErrors({ submit: result.error });
-        return;
+
+      if (editingStore) {
+        // Verificar quais campos foram alterados
+        const updates = {};
+        let hasChanges = false;
+        let addressChanged = false;
+
+        if (formData.name !== editingStore.name) {
+          updates.name = formData.name;
+          hasChanges = true;
+        }
+        if (formData.business_name !== (editingStore.business_name || '')) {
+          updates.business_name = formData.business_name;
+          hasChanges = true;
+        }
+        if (formData.description !== (editingStore.description || '')) {
+          updates.description = formData.description;
+          hasChanges = true;
+        }
+        if (formData.category !== editingStore.category) {
+          updates.category = formData.category;
+          hasChanges = true;
+        }
+        if (formData.cnpj !== (editingStore.cnpj || '')) {
+          updates.cnpj = formData.cnpj;
+          hasChanges = true;
+        }
+        if (formData.email !== (editingStore.email || '')) {
+          updates.email = formData.email;
+          hasChanges = true;
+        }
+        if (formData.phone !== (editingStore.phone || '')) {
+          updates.phone = formData.phone;
+          hasChanges = true;
+        }
+
+        // Verificar mudanças no endereço
+        const oldAddress = editingStore.address || {};
+        const newAddress = formData.address;
+
+        if (
+          newAddress.street !== (oldAddress.street || '') ||
+          newAddress.number !== (oldAddress.number || '') ||
+          newAddress.complement !== (oldAddress.complement || '') ||
+          newAddress.neighborhood !== (oldAddress.neighborhood || '') ||
+          newAddress.city !== (oldAddress.city || '') ||
+          newAddress.state !== (oldAddress.state || '') ||
+          newAddress.zip_code !== (oldAddress.zip_code || '')
+        ) {
+          updates.address = newAddress.street ? newAddress : null;
+          hasChanges = true;
+          addressChanged = newAddress.zip_code !== (oldAddress.zip_code || '');
+        }
+
+        if (!hasChanges) {
+          resetForm();
+          return;
+        }
+
+        result = await storesService.updateStore(editingStore.id, updates);
+
+        if (result.error) {
+          setFormErrors({ submit: result.error });
+          return;
+        }
+
+        // Atualizar localização apenas se CEP mudou
+        if (addressChanged && formData.address.zip_code) {
+          await geoService.updateStoreLocation(editingStore.id, formData.address);
+        }
+      } else {
+        // Criar nova loja
+        const storeData = {
+          ...formData,
+          user_id: user.id,
+          address: formData.address.street ? formData.address : null
+        };
+
+        result = await storesService.createStore(storeData);
+
+        if (result.error) {
+          setFormErrors({ submit: result.error });
+          return;
+        }
+
+        // Atualizar localização se endereço foi fornecido
+        if (result.data && formData.address.zip_code) {
+          const storeId = result.data[0]?.id;
+          await geoService.updateStoreLocation(storeId, formData.address);
+        }
       }
+
       await loadUserStores();
       resetForm();
     } catch (error) {
@@ -199,7 +300,8 @@ const Stores = () => {
     setFormData({
       name: store.name || '', business_name: store.business_name || '', description: store.description || '',
       category: store.category || '', cnpj: store.cnpj || '', email: store.email || '', phone: store.phone || '',
-      address: store.address || { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zip_code: '' }
+      address: store.address || { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zip_code: '' },
+      business_hours: store.business_hours || {}
     });
   };
 
@@ -399,6 +501,12 @@ const Stores = () => {
     }
   };
 
+
+  const irParaLoja = (nomeLoja) => {
+    const slug = createSlug(nomeLoja)
+    navigate(`/loja/${slug}`)
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="stores-container">
@@ -446,99 +554,25 @@ const Stores = () => {
           onClose={hideNotification}
         />
       )}
-      <div className="stores-header">
-        <button className="btn-voltar" onClick={handleVoltar}><RxArrowLeft /></button>
-        <h1>{editingStore ? 'Editar Loja' : creatingStore ? 'Nova Loja' : 'Minha Loja'}</h1>
-      </div>
 
-      {(editingStore || creatingStore) && (
-        <form className="store-form" onSubmit={handleSubmit}>
-          {formErrors.submit && <div className="error-message">{formErrors.submit}</div>}
-          <div className="form-section">
-            <div className="form-group-loja">
-              <label>Nome da Loja *</label>
-              <input type="text" name="name" value={formData.name} onChange={handleInputChange} placeholder="Nome fantasia da loja" />
-              {formErrors.name && <span className="field-error">{formErrors.name}</span>}
-            </div>
-            <div className="form-group-loja">
-              <label>Razão Social</label>
-              <input type="text" name="business_name" value={formData.business_name} onChange={handleInputChange} placeholder="Razão social completa" />
-            </div>
-            <div className="form-group-loja">
-              <label>Categoria *</label>
-              <select name="category" value={formData.category} onChange={handleInputChange}>
-                <option value="">Selecione uma categoria</option>
-                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
-              {formErrors.category && <span className="field-error">{formErrors.category}</span>}
-            </div>
-            <div className="form-group-loja">
-              <label>Descrição</label>
-              <textarea name="description" value={formData.description} onChange={handleInputChange} placeholder="Descreva sua loja e produtos" rows="3" />
-            </div>
-            <div className="form-group-loja">
-              <label>CNPJ</label>
-              <input type="text" name="cnpj" value={formData.cnpj} onChange={handleInputChange} placeholder="00.000.000/0001-00" />
-              {formErrors.cnpj && <span className="field-error">{formErrors.cnpj}</span>}
-            </div>
-          </div>
-          <div className="form-section">
-            <h3>Contato</h3>
-            <div className="form-group-loja">
-              <label>Email</label>
-              <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="contato@loja.com" />
-              {formErrors.email && <span className="field-error">{formErrors.email}</span>}
-            </div>
-            <div className="form-group-loja">
-              <label>Telefone</label>
-              <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="(11) 99999-9999" />
-              {formErrors.phone && <span className="field-error">{formErrors.phone}</span>}
-            </div>
-          </div>
-          <div className="form-section">
-            <h3>Endereço</h3>
-            <div className="form-row">
-              <div className="form-group-loja">
-                <label>Rua</label>
-                <input type="text" name="address.street" value={formData.address.street} onChange={handleInputChange} placeholder="Nome da rua" />
-              </div>
-              <div className="form-group-loja">
-                <label>Número</label>
-                <input type="text" name="address.number" value={formData.address.number} onChange={handleInputChange} placeholder="123" />
-              </div>
-            </div>
-            <div className="form-group-loja">
-              <label>Complemento</label>
-              <input type="text" name="address.complement" value={formData.address.complement} onChange={handleInputChange} placeholder="Sala, andar, etc." />
-            </div>
-            <div className="form-row">
-              <div className="form-group-loja">
-                <label>Bairro</label>
-                <input type="text" name="address.neighborhood" value={formData.address.neighborhood} onChange={handleInputChange} placeholder="Nome do bairro" />
-              </div>
-              <div className="form-group-loja">
-                <label>Cidade</label>
-                <input type="text" name="address.city" value={formData.address.city} onChange={handleInputChange} placeholder="Nome da cidade" />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group-loja">
-                <label>Estado</label>
-                <input type="text" name="address.state" value={formData.address.state} onChange={handleInputChange} placeholder="SP" maxLength="2" />
-              </div>
-              <div className="form-group-loja">
-                <label>CEP</label>
-                <input type="text" name="address.zip_code" value={formData.address.zip_code} onChange={handleInputChange} placeholder="00000-000" />
-              </div>
-            </div>
-          </div>
-          <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancelar</button>
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-              {isSubmitting ? 'Salvando...' : (editingStore ? 'Atualizar' : 'Criar Loja')}
-            </button>
-          </div>
-        </form>
+      {(editingStore || creatingStore) ? (
+        <StoreForm
+          formData={formData}
+          formErrors={formErrors}
+          isSubmitting={isSubmitting}
+          categories={categories}
+          editingStore={editingStore}
+          creatingStore={creatingStore}
+          handleVoltar={handleVoltar}
+          handleInputChange={handleInputChange}
+          handleSubmit={handleSubmit}
+          resetForm={resetForm}
+        />
+      ) : (
+        <div className="stores-header">
+          <button className="btn-voltar" onClick={handleVoltar}><RxArrowLeft /></button>
+          <h1>Minha Loja</h1>
+        </div>
       )}
 
       {editingProduct && (
@@ -631,12 +665,19 @@ const Stores = () => {
                           ) : (
                             <span className="status pending">⏳ Aguardando aprovação</span>
                           )}
+
                         </div>
                       </div>
                       <div className="store-card-controls">
                         <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); handleEdit(store); }}>
                           <LiaEdit size={28} />
                         </button>
+
+                        <div
+                          className="btn-visit-store"
+                          onClick={() => irParaLoja(store.name)}>
+                          Visitar Loja
+                        </div>
                       </div>
                     </div>
                   </div>

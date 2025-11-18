@@ -1,0 +1,18 @@
+-- Habilitar extensão PostGIS (se ainda não estiver habilitada)
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+-- Adicionar coluna de geolocalização na tabela users
+ALTER TABLE users 
+ADD COLUMN location GEOGRAPHY(Point, 4326);
+
+-- Adicionar coluna de geolocalização na tabela stores
+ALTER TABLE stores 
+ADD COLUMN location GEOGRAPHY(Point, 4326);
+
+-- Criar índices espaciais para performance
+CREATE INDEX idx_users_location ON users USING GIST(location);
+CREATE INDEX idx_stores_location ON stores USING GIST(location);
+
+-- Comentários para documentação
+COMMENT ON COLUMN users.location IS 'Localização geográfica (longitude, latitude) baseada no CEP';
+COMMENT ON COLUMN stores.location IS 'Localização geográfica (longitude, latitude) baseada no endereço';

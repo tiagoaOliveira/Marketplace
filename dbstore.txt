@@ -7,131 +7,21 @@ CREATE TABLE stores (
   description TEXT,
   category TEXT NOT NULL,
   cnpj TEXT UNIQUE,
+  logo_url TEXT,
+  banner_url TEXT,
   email TEXT,
   phone TEXT,
   address JSONB,
+  business_hours JSONB,
   is_approved BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Ativar RLS para stores
-ALTER TABLE stores ENABLE ROW LEVEL SECURITY;
-
--- 3. Políticas RLS para stores
--- Qualquer um pode ver lojas aprovadas
-CREATE POLICY "Anyone can view approved stores" ON stores
-  FOR SELECT USING (is_approved = true);
-
--- Usuários podem ver suas próprias lojas (aprovadas ou não)
-CREATE POLICY "Users can view own stores" ON stores
-  FOR SELECT USING (auth.uid() = user_id);
-
--- Usuários podem criar suas próprias lojas
-CREATE POLICY "Users can insert own stores" ON stores
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
--- Usuários podem atualizar suas próprias lojas
-CREATE POLICY "Users can update own stores" ON stores
-  FOR UPDATE USING (auth.uid() = user_id);
-
--- Usuários podem deletar suas próprias lojas
-CREATE POLICY "Users can delete own stores" ON stores
-  FOR DELETE USING (auth.uid() = user_id);
-
-
-
 -- 4. Alterar product_listings para referenciar stores
 ALTER TABLE product_listings ADD COLUMN store_id UUID NOT NULL REFERENCES stores(id) ON DELETE CASCADE;
 
--- 5. Atualizar políticas de product_listings
-DROP POLICY IF EXISTS "Anyone can view active listings" ON product_listings;
-CREATE POLICY "Anyone can view active listings from approved stores" ON product_listings
-  FOR SELECT USING (
-    is_active = true 
-    AND EXISTS (
-      SELECT 1 FROM stores 
-      WHERE stores.id = product_listings.store_id 
-      AND stores.is_approved = true
-    )
-  );
-
--- Donos de loja podem gerenciar seus produtos
-CREATE POLICY "Store owners can view own listings" ON product_listings
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM stores 
-      WHERE stores.id = product_listings.store_id 
-      AND stores.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Store owners can insert own listings" ON product_listings
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM stores 
-      WHERE stores.id = product_listings.store_id 
-      AND stores.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Store owners can update own listings" ON product_listings
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM stores 
-      WHERE stores.id = product_listings.store_id 
-      AND stores.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Store owners can delete own listings" ON product_listings
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM stores 
-      WHERE stores.id = product_listings.store_id 
-      AND stores.user_id = auth.uid()
-    )
-  );
-
--- 6. Criar índices para performance
-CREATE INDEX idx_stores_user_id ON stores(user_id);
-CREATE INDEX idx_stores_category ON stores(category);
-CREATE INDEX idx_stores_is_approved ON stores(is_approved);
-CREATE INDEX idx_stores_cnpj ON stores(cnpj) WHERE cnpj IS NOT NULL;
-CREATE INDEX idx_product_listings_store_id ON product_listings(store_id);
-
--- 1. Remover coluna status de orders (se existir)
-ALTER TABLE orders 
-DROP COLUMN IF EXISTS status;
-
--- 2. Adicionar coluna status em order_items
-ALTER TABLE order_items 
-ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pendente' 
-CHECK (status IN ('pendente', 'entregue', 'cancelado'));
 
 -- 3. Adicionar colunas de auditoria
 ALTER TABLE order_items
 ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS status_updated_by UUID REFERENCES users(id);
-
--- 4. Criar índices para performance
-CREATE INDEX IF NOT EXISTS idx_order_items_status ON order_items(status);
-CREATE INDEX IF NOT EXISTS idx_order_items_store_status ON order_items(store_id, status);
-CREATE INDEX IF NOT EXISTS idx_order_items_status_updated_at ON order_items(status_updated_at);
-
--- 5. Atualizar política RLS para order_items - vendedores podem atualizar status
-DROP POLICY IF EXISTS "Store owners can update item status" ON order_items;
-CREATE POLICY "Store owners can update item status" ON order_items
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM stores 
-      WHERE stores.id = order_items.store_id 
-      AND stores.user_id = auth.uid()
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM stores 
-      WHERE stores.id = order_items.store_id 
-      AND stores.user_id = auth.uid()
-    )
-  );

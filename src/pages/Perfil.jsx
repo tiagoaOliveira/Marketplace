@@ -1,5 +1,6 @@
 // src/pages/Perfil.jsx
 import React, { useState, useEffect } from 'react'
+import { geoService } from '../lib/services';
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -70,16 +71,16 @@ const PerfilUsuario = () => {
 
   const carregarPedidosPendentes = async (storeIds) => {
     try {
-      const { data: items } = await supabase
-        .from('order_items')
-        .select('order_id')
-        .in('store_id', storeIds)
-        .eq('status', 'pendente')
+      const { data, error } = await supabase.functions.invoke('get-pending-orders-count', {
+        body: {}
+      })
 
-      if (items) {
-        const uniqueOrders = [...new Set(items.map(item => item.order_id))]
-        setPedidosPendentes(uniqueOrders.length)
+      if (error) {
+        console.error('Erro ao carregar pendentes:', error)
+        return
       }
+
+      setPedidosPendentes(data?.count || 0)
     } catch (error) {
       console.error('Erro ao carregar pedidos pendentes:', error)
     }
@@ -222,20 +223,54 @@ const PerfilUsuario = () => {
       }
 
       if (type === 'dados') {
-        const updates = {
-          fullname: formData.fullname,
-          phone: formData.phone || null,
-          cep: formData.cep || null,
-          cidade: formData.cidade || null,
-          bairro: formData.bairro || null,
-          rua: formData.rua || null,
-          numero: formData.numero || null
+        // Verificar quais campos foram alterados
+        const updates = {};
+        let hasChanges = false;
+
+        if (formData.fullname !== userProfile.fullname) {
+          updates.fullname = formData.fullname;
+          hasChanges = true;
         }
-        const { error } = await updateProfile(updates)
+        if (formData.phone !== (userProfile.phone || '')) {
+          updates.phone = formData.phone || null;
+          hasChanges = true;
+        }
+        if (formData.cep !== (userProfile.cep || '')) {
+          updates.cep = formData.cep || null;
+          hasChanges = true;
+        }
+        if (formData.cidade !== (userProfile.cidade || '')) {
+          updates.cidade = formData.cidade || null;
+          hasChanges = true;
+        }
+        if (formData.bairro !== (userProfile.bairro || '')) {
+          updates.bairro = formData.bairro || null;
+          hasChanges = true;
+        }
+        if (formData.rua !== (userProfile.rua || '')) {
+          updates.rua = formData.rua || null;
+          hasChanges = true;
+        }
+        if (formData.numero !== (userProfile.numero || '')) {
+          updates.numero = formData.numero || null;
+          hasChanges = true;
+        }
+
+        if (!hasChanges) {
+          setTelaAtiva('menu');
+          return;
+        }
+
+        const { error } = await updateProfile(updates);
+
         if (error) {
-          setFormErrors({ submit: error })
+          setFormErrors({ submit: error });
         } else {
-          setTelaAtiva('menu')
+          // Atualizar localização apenas se CEP foi alterado
+          if (updates.cep && formData.cep) {
+            await geoService.updateUserLocation(user.id, formData.cep);
+          }
+          setTelaAtiva('menu');
         }
       }
     } catch (err) {
@@ -436,7 +471,7 @@ const PerfilUsuario = () => {
       )}
 
       <div className="form-group">
-        <label>Nome Completo</label>
+        <label>Nome </label>
         <input
           type="text"
           name="fullname"

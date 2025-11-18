@@ -349,15 +349,6 @@
     flex-direction: column;
 }
 
-.pedido-expandido h4 {
-    margin: 0 0 0.75rem 0;
-    font-size: 14px;
-    font-weight: 700;
-    color: #1e293b;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
 .pedido-endereco {
     background: white;
     padding: 1rem 1rem 0 1rem;
@@ -382,6 +373,20 @@
     padding: 0 1rem;
     border-radius: 12px;
     border: 2px solid #f1f5f9;
+}
+
+.pedido-produtos {
+    padding: 1rem;
+}
+
+.pedido-produtos h5 {
+    margin: 0 0 1rem 0;
+    font-Size: 16px;
+    font-Weight: 800;
+    color: #667eea;
+    border-Bottom: 1px solid #e2e8f0;
+    padding-Bottom: 0.5rem;
+    cursor: pointer;
 }
 
 .item-expandido {

@@ -51,108 +51,6 @@
   font-weight: 500;
 }
 
-/* Formulário de Loja */
-.store-form {
-  background: white;
-  border-radius: 20px;
-  padding: 2.5rem;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-  border: 2px solid transparent;
-  background-image: linear-gradient(white, white), linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-}
-
-.form-section {
-  margin-bottom: 2rem;
-}
-
-.form-section h3 {
-  color: #1e293b;
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid #f1f5f9;
-}
-
-.form-group-loja {
-  margin-bottom: 1.5rem;
-  position: relative;
-}
-
-.form-group-loja label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #1e293b;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.form-group-loja input,
-.form-group-loja select,
-.form-group-loja textarea {
-  width: 100%;
-  padding: 0.875rem 1rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  font-size: 15px;
-  color: #1e293b;
-  background: white;
-  transition: all 0.3s ease;
-  box-sizing: border-box;
-  font-family: inherit;
-}
-
-.form-group-loja input:focus,
-.form-group-loja select:focus,
-.form-group-loja textarea:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.form-group-loja textarea {
-  resize: vertical;
-  min-height: 100px;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.field-error {
-  display: block;
-  color: #ef4444;
-  font-size: 13px;
-  margin-top: 0.5rem;
-  font-weight: 500;
-}
-
-.error-message {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  border: 2px solid #fca5a5;
-  color: #dc2626;
-  padding: 1rem 1.5rem;
-  border-radius: 12px;
-  margin-bottom: 1.5rem;
-  font-size: 14px;
-  text-align: center;
-  font-weight: 600;
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 2px solid #f1f5f9;
-}
-
 /* Lista de Lojas */
 .stores-list {
   display: flex;
@@ -241,8 +139,9 @@
 
 .store-card-controls {
   display: flex;
+  flex-direction: column;
+  gap: 4.8rem;
   align-items: center;
-  gap: 0.75rem;
   flex-shrink: 0;
 }
 
@@ -262,6 +161,11 @@
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   transform: scale(1.1);
+}
+
+.btn-visit-store {
+  font-weight: bold;
+  color: #667eea;
 }
 
 /* Produtos desativados na busca do catálogo */
@@ -536,15 +440,7 @@
   font-weight: 600;
 }
 
-.product-status {
-  color: #64748b;
-  font-size: 13px;
-  font-style: italic;
-  font-weight: 600;
-  padding: 0.375rem 0.75rem;
-  background: #f1f5f9;
-  border-radius: 8px;
-}
+/* Atenção: `product-status` para lista de produtos (item inativo) está em Product-Item */
 
 .product-actions {
   display: flex;
@@ -755,26 +651,9 @@
   }
 
 
-  .store-form {
-    padding: 1.5rem;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-
-  .form-actions {
-    flex-direction: column;
-  }
-
   .store-card-header {
     flex-direction: column;
     padding: 1.5rem;
-  }
-
-
-  .store-card-controls {
-    justify-content: flex-end;
   }
 
   .store-details h3 {
@@ -811,19 +690,5 @@
     width: auto;
     max-width: none;
     padding: 1.5rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .stores-header h1 {
-    font-size: 20px;
-  }
-
-  .store-details h3 {
-    font-size: 18px;
-  }
-
-  .store-products-title {
-    font-size: 16px;
   }
 }
