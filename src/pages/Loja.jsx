@@ -47,7 +47,7 @@ const Stores = () => {
   const [formData, setFormData] = useState({
     name: '', business_name: '', description: '', category: '', cnpj: '', email: '', phone: '',
     address: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zip_code: '' },
-    business_hours: {}
+    business_hours: []
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,6 +76,31 @@ const Stores = () => {
       console.error('Erro ao carregar lojas:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveBusinessHours = async (horariosAtualizados) => {
+    if (!editingStore?.id) return;
+
+    try {
+      const { data, error } = await storesService.updateStore(editingStore.id, {
+        business_hours: horariosAtualizados
+      });
+
+      if (error) {
+        showNotification('Erro ao salvar horários: ' + error, 'error');
+      } else {
+        showNotification('Horários salvos com sucesso!', 'success');
+        // Atualizar a loja no estado local
+        setStores(prev => prev.map(s =>
+          s.id === editingStore.id ? { ...s, business_hours: horariosAtualizados } : s
+        ));
+        // Atualizar editingStore também
+        setEditingStore(prev => ({ ...prev, business_hours: horariosAtualizados }));
+      }
+    } catch (error) {
+      console.error('Erro ao salvar horários:', error);
+      showNotification('Erro inesperado ao salvar horários', 'error');
     }
   };
 
@@ -195,7 +220,6 @@ const Stores = () => {
       let result;
 
       if (editingStore) {
-        // Verificar quais campos foram alterados
         const updates = {};
         let hasChanges = false;
         let addressChanged = false;
@@ -204,6 +228,7 @@ const Stores = () => {
           updates.name = formData.name;
           hasChanges = true;
         }
+
         if (formData.business_name !== (editingStore.business_name || '')) {
           updates.business_name = formData.business_name;
           hasChanges = true;
@@ -259,6 +284,11 @@ const Stores = () => {
           return;
         }
 
+        if (JSON.stringify(formData.business_hours) !== JSON.stringify(editingStore.business_hours || {})) {
+          updates.business_hours = formData.business_hours;
+          hasChanges = true;
+        }
+
         // Atualizar localização apenas se CEP mudou
         if (addressChanged && formData.address.zip_code) {
           await geoService.updateStoreLocation(editingStore.id, formData.address);
@@ -268,7 +298,8 @@ const Stores = () => {
         const storeData = {
           ...formData,
           user_id: user.id,
-          address: formData.address.street ? formData.address : null
+          address: formData.address.street ? formData.address : null,
+          business_hours: formData.business_hours
         };
 
         result = await storesService.createStore(storeData);
@@ -298,10 +329,15 @@ const Stores = () => {
   const handleEdit = (store) => {
     setEditingStore(store);
     setFormData({
-      name: store.name || '', business_name: store.business_name || '', description: store.description || '',
-      category: store.category || '', cnpj: store.cnpj || '', email: store.email || '', phone: store.phone || '',
+      name: store.name || '',
+      business_name: store.business_name || '',
+      description: store.description || '',
+      category: store.category || '',
+      cnpj: store.cnpj || '',
+      email: store.email || '',
+      phone: store.phone || '',
       address: store.address || { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zip_code: '' },
-      business_hours: store.business_hours || {}
+      business_hours: store.business_hours || []
     });
   };
 
@@ -309,7 +345,8 @@ const Stores = () => {
     setCreatingStore(true);
     setFormData({
       name: '', business_name: '', description: '', category: '', cnpj: '', email: '', phone: '',
-      address: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zip_code: '' }
+      address: { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zip_code: '' },
+      business_hours: []
     });
   };
 
@@ -567,6 +604,7 @@ const Stores = () => {
           handleInputChange={handleInputChange}
           handleSubmit={handleSubmit}
           resetForm={resetForm}
+          handleSaveBusinessHours={handleSaveBusinessHours} // ← ADICIONE ESTA LINHA
         />
       ) : (
         <div className="stores-header">

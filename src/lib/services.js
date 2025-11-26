@@ -3,10 +3,10 @@ import { supabase } from './supabase'
 
 
 export const productsService = {
-async getProducts() {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
+  async getProducts() {
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
       *,
       product_listings!product_listings_product_id_fkey (
         id,
@@ -16,10 +16,10 @@ async getProducts() {
         stores!product_listings_store_id_fkey ( name, is_approved )
       )
     `)
-    .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false })
 
-  return { data, error }
-},
+    return { data, error }
+  },
 
   // Buscar produto por ID
   async getProduct(id) {
@@ -61,7 +61,6 @@ async getProducts() {
   }
 }
 
-// Função para buscar coordenadas via CEP (ViaCEP + Nominatim)
 export const geoService = {
   // Buscar coordenadas por CEP
   async getCoordinatesFromCEP(cep) {
@@ -85,7 +84,7 @@ export const geoService = {
   // Salvar localização do usuário
   async updateUserLocation(userId, cep) {
     console.log('updateUserLocation chamado:', { userId, cep });
-    
+
     const coords = await this.getCoordinatesFromCEP(cep);
     if (!coords) {
       console.error('Não foi possível obter coordenadas');
@@ -108,10 +107,10 @@ export const geoService = {
   // Salvar localização da loja usando CEP do endereço
   async updateStoreLocation(storeId, address) {
     console.log('updateStoreLocation chamado:', { storeId, address });
-    
+
     if (address.zip_code) {
       const coords = await this.getCoordinatesFromCEP(address.zip_code);
-      
+
       if (!coords) {
         console.error('Não foi possível obter coordenadas');
         return { error: 'Não foi possível obter as coordenadas' };
@@ -151,9 +150,9 @@ export const listingsService = {
 
   // Listar produtos ativos com menor preço (apenas de lojas aprovadas)
   async getActiveListings() {
-  const { data, error } = await supabase
-    .from('product_listings')
-    .select(`
+    const { data, error } = await supabase
+      .from('product_listings')
+      .select(`
       *,
       products!product_listings_product_id_fkey (
         id,
@@ -165,12 +164,12 @@ export const listingsService = {
       ),
       stores!product_listings_store_id_fkey ( name, is_approved )
     `)
-    .eq('is_active', true)
-    .gt('stock', 0)
-    .order('price', { ascending: true })
+      .eq('is_active', true)
+      .gt('stock', 0)
+      .order('price', { ascending: true })
 
-  return { data, error }
-},
+    return { data, error }
+  },
 
   // Listar produtos de uma loja específica
   async getStoreListings(storeId) {
@@ -193,10 +192,10 @@ export const listingsService = {
 // ========================
 export const cartService = {
   // Obter carrinho ativo do usuário
-async getActiveCart(userId) {
-  const { data, error } = await supabase
-    .from('carts')
-    .select(`
+  async getActiveCart(userId) {
+    const { data, error } = await supabase
+      .from('carts')
+      .select(`
       *,
       cart_items!cart_items_cart_id_fkey (
         id,
@@ -221,12 +220,12 @@ async getActiveCart(userId) {
         )
       )
     `)
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .maybeSingle()
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .maybeSingle()
 
-  return { data, error }
-},
+    return { data, error }
+  },
 
   // Criar novo carrinho
   async createCart(userId) {
@@ -374,7 +373,6 @@ export const storesService = {
     return { data, error: error?.message }
   },
 
-  // Atualizar loja
   async updateStore(storeId, updates) {
     const { data, error } = await supabase
       .from('stores')
@@ -409,9 +407,9 @@ export const storesService = {
 
   // Buscar produtos de uma loja
   async getStoreProducts(storeId) {
-  const { data, error } = await supabase
-    .from('product_listings')
-    .select(`
+    const { data, error } = await supabase
+      .from('product_listings')
+      .select(`
       *,
       products (
         id,
@@ -421,12 +419,12 @@ export const storesService = {
         images
       )
     `)
-    .eq('store_id', storeId)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false })
+      .eq('store_id', storeId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
 
-  return { data, error: error?.message }
-},
+    return { data, error: error?.message }
+  },
 
   // Atualizar product listing (preço e estoque)
   async updateProductListing(listingId, updateData) {
@@ -454,9 +452,9 @@ export const storesService = {
 
   // Buscar product listing por ID
   async getProductListing(listingId) {
-  const { data, error } = await supabase
-    .from('product_listings')
-    .select(`
+    const { data, error } = await supabase
+      .from('product_listings')
+      .select(`
       *,
       products (
         id,
@@ -471,11 +469,11 @@ export const storesService = {
         user_id
       )
     `)
-    .eq('id', listingId)
-    .single()
+      .eq('id', listingId)
+      .single()
 
-  return { data, error: error?.message }
-},  
+    return { data, error: error?.message }
+  },
 
   // Ativar/desativar product listing
   async toggleProductListing(listingId, isActive) {
@@ -491,16 +489,16 @@ export const storesService = {
   // Criar product listing
   async createProductListing(listingData) {
 
-  const { data, error } = await supabase
-    .from('product_listings')
-    .insert([{
-      product_id: listingData.product_id,
-      store_id: listingData.store_id,
-      price: listingData.price,
-      stock: listingData.stock,
-      is_active: listingData.is_active ?? true
-    }])
-    .select(`
+    const { data, error } = await supabase
+      .from('product_listings')
+      .insert([{
+        product_id: listingData.product_id,
+        store_id: listingData.store_id,
+        price: listingData.price,
+        stock: listingData.stock,
+        is_active: listingData.is_active ?? true
+      }])
+      .select(`
       *,
       products (
         id,
@@ -511,10 +509,10 @@ export const storesService = {
       )
     `)
 
-  if (error) {
-    console.error('Erro detalhado do Supabase:', error);
-  }
+    if (error) {
+      console.error('Erro detalhado do Supabase:', error);
+    }
 
-  return { data, error: error?.message }
-}
+    return { data, error: error?.message }
+  }
 }

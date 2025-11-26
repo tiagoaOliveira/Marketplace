@@ -1,7 +1,6 @@
-// StoreForm.jsx
 import React from 'react';
 import { RxArrowLeft } from "react-icons/rx";
-import { BusinessHours } from './BusinessHours';
+import { BusinessHours } from './BusinessHours.jsx';
 import './StoreForm.css';
 
 
@@ -15,8 +14,29 @@ const StoreForm = ({
   handleVoltar,
   handleInputChange,
   handleSubmit,
-  resetForm
+  resetForm,
+  handleSaveBusinessHours
 }) => {
+
+  const formatCEP = (value) => {
+    const onlyNumbers = value.replace(/\D/g, '');      // remove tudo que não é número
+    if (onlyNumbers.length <= 5) {
+      return onlyNumbers;                              // até 5 dígitos, só números
+    }
+    return onlyNumbers.replace(/(\d{5})(\d{1,3})/, "$1-$2"); // insere hífen
+  };
+
+  const handleCEPChange = (e) => {
+    const formatted = formatCEP(e.target.value);
+
+    handleInputChange({
+      target: {
+        name: "address.zip_code",
+        value: formatted
+      }
+    });
+  };
+
   return (
     <>
       <div className="stores-header">
@@ -57,10 +77,9 @@ const StoreForm = ({
         <div className="form-section">
           <h3>Horário de Funcionamento</h3>
           <BusinessHours
-            value={formData.business_hours || {}}
-            onChange={(hours) => handleInputChange({
-              target: { name: 'business_hours', value: hours }
-            })}
+            value={formData.business_hours}
+            onChange={(newHours) => handleInputChange({ target: { name: 'business_hours', value: newHours } })}
+            onSave={handleSaveBusinessHours}
           />
           <h3>Contato</h3>
           <div className="form-group-loja">
@@ -75,6 +94,17 @@ const StoreForm = ({
           </div>
         </div>
         <div className="form-section">
+          <div className="form-group-loja">
+            <label>CEP</label>
+            <input
+              type="text"
+              name="address.zip_code"
+              value={formData.address.zip_code}
+              onChange={handleCEPChange}
+              placeholder="00000-000"
+              maxLength={9}   // evita ultrapassar 00000-000
+            />
+          </div>
           <h3>Endereço</h3>
           <div className="form-row">
             <div className="form-group-loja">
@@ -104,10 +134,6 @@ const StoreForm = ({
             <div className="form-group-loja">
               <label>Estado</label>
               <input type="text" name="address.state" value={formData.address.state} onChange={handleInputChange} placeholder="SP" maxLength="2" />
-            </div>
-            <div className="form-group-loja">
-              <label>CEP</label>
-              <input type="text" name="address.zip_code" value={formData.address.zip_code} onChange={handleInputChange} placeholder="00000-000" />
             </div>
           </div>
         </div>

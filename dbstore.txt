@@ -1,4 +1,3 @@
--- 1. Criar tabela stores
 CREATE TABLE stores (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -7,21 +6,59 @@ CREATE TABLE stores (
   description TEXT,
   category TEXT NOT NULL,
   cnpj TEXT UNIQUE,
-  logo_url TEXT,
-  banner_url TEXT,
   email TEXT,
   phone TEXT,
   address JSONB,
-  business_hours JSONB,
+  business_hours jsonb,
+  location GEOGRAPHY(Point, 4326), -- Geolocalização da loja
   is_approved BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Alterar product_listings para referenciar stores
-ALTER TABLE product_listings ADD COLUMN store_id UUID NOT NULL REFERENCES stores(id) ON DELETE CASCADE;
+-- Índices
+CREATE INDEX idx_stores_user_id ON stores(user_id);
+CREATE INDEX idx_stores_category ON stores(category);
+CREATE INDEX idx_stores_is_approved ON stores(is_approved);
+CREATE INDEX idx_stores_cnpj ON stores(cnpj) WHERE cnpj IS NOT NULL;
+CREATE INDEX idx_stores_location ON stores USING GIST(location);
 
+-- RLS
+CREATE POLICY stores_select ON stores
+  FOR SELECT
+  USING (
+    is_approved = true OR 
+    auth_user_id() = user_id
+  );
 
--- 3. Adicionar colunas de auditoria
-ALTER TABLE order_items
-ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMPTZ,
-ADD COLUMN IF NOT EXISTS status_updated_by UUID REFERENCES users(id);
+CREATE POLICY stores_insert ON stores
+  FOR INSERT TO authenticated
+  WITH CHECK (auth_user_id() = user_id);
+
+CREATE POLICY stores_update ON stores
+  FOR UPDATE TO authenticated
+  USING (auth_user_id() = user_id);
+
+CREATE POLICY stores_delete ON stores
+  FOR DELETE TO authenticated
+  USING (auth_user_id() = user_id);
+
+-- Função para atualizar localização
+CREATE OR REPLACE FUNCTION update_store_location(
+  p_store_id UUID,
+  p_longitude DOUBLE PRECISION,
+  p_latitude DOUBLE PRECISION
+)
+RETURNS TABLE(id UUID, location GEOGRAPHY)
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE stores
+  SET location = ST_SetSRID(ST_MakePoint(p_longitude, p_latitude), 4326)::geography
+  WHERE stores.id = p_store_id;
+  
+  RETURN QUERY
+  SELECT stores.id, stores.location
+  FROM stores
+  WHERE stores.id = p_store_id;
+END;
+$$;

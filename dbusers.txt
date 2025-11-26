@@ -1,0 +1,61 @@
+-- Tabela principal de usuários
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fullname TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  phone TEXT,
+  cep TEXT,
+  rua TEXT,
+  numero TEXT,
+  bairro TEXT,
+  cidade TEXT,
+  location GEOGRAPHY(Point, 4326), -- Geolocalização baseada no CEP
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Índices
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_cep ON users(cep);
+CREATE INDEX idx_users_location ON users USING GIST(location);
+CREATE INDEX idx_users_created_at ON users(created_at);
+
+-- RLS
+CREATE POLICY users_full ON users
+  FOR ALL TO authenticated
+  USING (auth_user_id() = id)
+  WITH CHECK (auth_user_id() = id);
+
+-- Trigger para sincronizar com auth.users
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.users (id, fullname, email)
+  VALUES (new.id, new.raw_user_meta_data->>'fullname', new.email);
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- Função para atualizar localização
+CREATE OR REPLACE FUNCTION update_user_location(
+  p_user_id UUID,
+  p_longitude DOUBLE PRECISION,
+  p_latitude DOUBLE PRECISION
+)
+RETURNS TABLE(id UUID, location GEOGRAPHY)
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE users
+  SET location = ST_SetSRID(ST_MakePoint(p_longitude, p_latitude), 4326)::geography
+  WHERE users.id = p_user_id;
+  
+  RETURN QUERY
+  SELECT users.id, users.location
+  FROM users
+  WHERE users.id = p_user_id;
+END;
+$$;

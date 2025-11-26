@@ -1,17 +1,30 @@
-"get-orders"
-// supabase/functions/get-orders/index.ts
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
 Deno.serve(async (req)=>{
-  // Handle CORS preflight
+  // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: corsHeaders
     });
   }
   try {
+    // 1. Validar variáveis de ambiente
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing environment variables');
+    }
+    // 2. Criar cliente com SERVICE ROLE
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+    // 3. Validar JWT do usuário
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({
@@ -24,22 +37,11 @@ Deno.serve(async (req)=>{
         }
       });
     }
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
-      throw new Error('Missing environment variables');
-    }
-    // Verificar autenticação usando anon key
-    const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        'Authorization': authHeader,
-        'apikey': supabaseAnonKey
-      }
-    });
-    if (!userResponse.ok) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
       return new Response(JSON.stringify({
-        error: 'Unauthorized'
+        error: 'Invalid token'
       }), {
         status: 401,
         headers: {
@@ -48,67 +50,12 @@ Deno.serve(async (req)=>{
         }
       });
     }
-    const user = await userResponse.json();
-    const { view } = await req.json();
-    // Helper para fazer requests usando SERVICE ROLE (bypassa RLS)
-    const supabaseFetch = async (endpoint, options = {})=>{
-      const response = await fetch(`${supabaseUrl}/rest/v1/${endpoint}`, {
-        ...options,
-        headers: {
-          'Authorization': `Bearer ${supabaseServiceKey}`,
-          'apikey': supabaseServiceKey,
-          'Content-Type': 'application/json',
-          ...options.headers
-        }
-      });
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Supabase error: ${error}`);
-      }
-      return response.json();
-    };
-    // VISÃO VENDEDOR
-    if (view === 'vendedor') {
-      // Verificar se usuário tem lojas
-      const stores = await supabaseFetch(`stores?user_id=eq.${user.id}&select=id`);
-      if (!stores || stores.length === 0) {
-        return new Response(JSON.stringify({
-          data: [],
-          message: 'User has no stores'
-        }), {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-      const storeIds = stores.map((s)=>s.id).join(',');
-      // Buscar order_items das lojas do vendedor
-      const items = await supabaseFetch(`order_items?store_id=in.(${storeIds})&select=*,product_listings(products(images))&order=created_at.desc`);
-      if (!items || items.length === 0) {
-        return new Response(JSON.stringify({
-          data: []
-        }), {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-      // Buscar orders relacionadas
-      const orderIds = [
-        ...new Set(items.map((item)=>item.order_id))
-      ].join(',');
-      const orders = await supabaseFetch(`orders?id=in.(${orderIds})&order=created_at.desc`);
-      // Montar pedidos com itens (apenas os itens do vendedor)
-      const pedidos = orders?.map((order)=>({
-          ...order,
-          order_items: items.filter((item)=>item.order_id === order.id)
-        })) || [];
+    // 4. Buscar lojas do usuário
+    const { data: stores, error: storesError } = await supabaseAdmin.from('stores').select('id').eq('user_id', user.id);
+    if (storesError) throw storesError;
+    if (!stores || stores.length === 0) {
       return new Response(JSON.stringify({
-        data: pedidos
+        count: 0
       }), {
         status: 200,
         headers: {
@@ -117,10 +64,16 @@ Deno.serve(async (req)=>{
         }
       });
     }
-    // VISÃO COMPRADOR (padrão)
-    const orders = await supabaseFetch(`orders?user_id=eq.${user.id}&select=*,order_items(*,product_listings(products(images)))&order=created_at.desc`);
+    const storeIds = stores.map((s)=>s.id);
+    // 5. Buscar itens pendentes
+    const { data: items, error: itemsError } = await supabaseAdmin.from('order_items').select('order_id').in('store_id', storeIds).eq('status', 'pendente');
+    if (itemsError) throw itemsError;
+    // 6. Contar orders únicas
+    const uniqueOrders = [
+      ...new Set(items?.map((item)=>item.order_id) || [])
+    ];
     return new Response(JSON.stringify({
-      data: orders || []
+      count: uniqueOrders.length
     }), {
       status: 200,
       headers: {
@@ -143,19 +96,34 @@ Deno.serve(async (req)=>{
 });
 
 
-"get-pending-orders-count"
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
 Deno.serve(async (req)=>{
+  // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: corsHeaders
     });
   }
   try {
+    // 1. Validar variáveis de ambiente
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing environment variables');
+    }
+    // 2. Criar cliente com SERVICE ROLE (bypassa RLS)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+    // 3. Validar JWT do usuário
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({
@@ -168,19 +136,11 @@ Deno.serve(async (req)=>{
         }
       });
     }
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
-    // Verificar autenticação
-    const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        'Authorization': authHeader,
-        'apikey': supabaseAnonKey
-      }
-    });
-    if (!userResponse.ok) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
       return new Response(JSON.stringify({
-        error: 'Unauthorized'
+        error: 'Invalid token'
       }), {
         status: 401,
         headers: {
@@ -189,22 +149,79 @@ Deno.serve(async (req)=>{
         }
       });
     }
-    const user = await userResponse.json();
-    // Buscar lojas do usuário usando SERVICE ROLE
-    const storesResponse = await fetch(`${supabaseUrl}/rest/v1/stores?user_id=eq.${user.id}&select=id`, {
-      headers: {
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-        'apikey': supabaseServiceKey,
-        'Content-Type': 'application/json'
-      }
-    });
-    if (!storesResponse.ok) {
-      throw new Error('Failed to fetch stores');
-    }
-    const stores = await storesResponse.json();
-    if (!stores || stores.length === 0) {
+    // 4. Validar parâmetro 'view'
+    const { view } = await req.json();
+    if (view && ![
+      'vendedor',
+      'comprador'
+    ].includes(view)) {
       return new Response(JSON.stringify({
-        count: 0
+        error: 'Invalid view parameter'
+      }), {
+        status: 400,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+    // ========================================
+    // VISÃO VENDEDOR
+    // ========================================
+    if (view === 'vendedor') {
+      // Buscar lojas do usuário
+      const { data: stores, error: storesError } = await supabaseAdmin.from('stores').select('id').eq('user_id', user.id);
+      if (storesError) throw storesError;
+      if (!stores || stores.length === 0) {
+        return new Response(JSON.stringify({
+          data: []
+        }), {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+      const storeIds = stores.map((s)=>s.id);
+      // Buscar order_items das lojas do vendedor
+      const { data: items, error: itemsError } = await supabaseAdmin.from('order_items').select(`
+          *,
+          product_listings (
+            products (
+              images
+            )
+          )
+        `).in('store_id', storeIds).order('created_at', {
+        ascending: false
+      });
+      if (itemsError) throw itemsError;
+      if (!items || items.length === 0) {
+        return new Response(JSON.stringify({
+          data: []
+        }), {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+      // Buscar orders relacionadas
+      const orderIds = [
+        ...new Set(items.map((item)=>item.order_id))
+      ];
+      const { data: orders, error: ordersError } = await supabaseAdmin.from('orders').select('*').in('id', orderIds).order('created_at', {
+        ascending: false
+      });
+      if (ordersError) throw ordersError;
+      // Montar resposta (apenas itens do vendedor)
+      const pedidos = orders?.map((order)=>({
+          ...order,
+          order_items: items.filter((item)=>item.order_id === order.id)
+        })) || [];
+      return new Response(JSON.stringify({
+        data: pedidos
       }), {
         status: 200,
         headers: {
@@ -213,25 +230,25 @@ Deno.serve(async (req)=>{
         }
       });
     }
-    const storeIds = stores.map((s)=>s.id).join(',');
-    // Buscar itens pendentes usando SERVICE ROLE
-    const itemsResponse = await fetch(`${supabaseUrl}/rest/v1/order_items?store_id=in.(${storeIds})&status=eq.pendente&select=order_id`, {
-      headers: {
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-        'apikey': supabaseServiceKey,
-        'Content-Type': 'application/json'
-      }
+    // ========================================
+    // VISÃO COMPRADOR (padrão)
+    // ========================================
+    const { data: orders, error: ordersError } = await supabaseAdmin.from('orders').select(`
+        *,
+        order_items (
+          *,
+          product_listings (
+            products (
+              images
+            )
+          )
+        )
+      `).eq('user_id', user.id).order('created_at', {
+      ascending: false
     });
-    if (!itemsResponse.ok) {
-      throw new Error('Failed to fetch items');
-    }
-    const items = await itemsResponse.json();
-    // Contar orders únicas
-    const uniqueOrders = [
-      ...new Set(items.map((item)=>item.order_id))
-    ];
+    if (ordersError) throw ordersError;
     return new Response(JSON.stringify({
-      count: uniqueOrders.length
+      data: orders || []
     }), {
       status: 200,
       headers: {

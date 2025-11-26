@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
+// PerfilLoja.jsx - CORRIGIDO
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { storesService, cartService } from '../lib/services';
 import { supabase } from '../lib/supabase';
 import { useNotification } from '../hooks/useNotification';
-import { useProductModal } from '../hooks/useProductModal.jsx';
+import { useProductModalContext } from '../contexts/ProductModalContext.jsx';
 import './PerfilLoja.css';
-import '../components/Produtos'; 
 import { RxArrowLeft } from "react-icons/rx";
 
 const PerfilLoja = () => {
   const { storeSlug } = useParams();
   const navigate = useNavigate();
   const { notification, showNotification } = useNotification();
-  const { abrirModal, fecharModal, ProductModal } = useProductModal();
+  const { abrirModalProduto } = useProductModalContext();
+  
   const [loja, setLoja] = useState(null);
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,9 +76,8 @@ const PerfilLoja = () => {
     }
   };
 
-  const adicionarAoCarrinho = async (listing) => {
+  const adicionarAoCarrinho = useCallback(async (listing) => {
     if (!user) {
-      fecharModal();
       showNotification('Faça login para adicionar produtos ao carrinho', 'warning');
       return;
     }
@@ -99,9 +99,9 @@ const PerfilLoja = () => {
     } catch (error) {
       console.error('Erro ao adicionar ao carrinho:', error);
     }
-  };
+  }, [user, showNotification]);
 
-  const removerDoCarrinho = async (listing) => {
+  const removerDoCarrinho = useCallback(async (listing) => {
     if (!user) return;
 
     try {
@@ -120,17 +120,59 @@ const PerfilLoja = () => {
     } catch (error) {
       console.error('Erro ao remover do carrinho:', error);
     }
-  };
+  }, [user]);
 
   const handleVoltar = () => {
     window.history.back();
   };
 
+  const renderControls = useCallback((produto) => {
+    // Encontra o listing correspondente
+    const listing = produtos.find(p => p.products.name === produto.nome);
+    if (!listing) return null;
+
+    return (
+      <>
+        <button
+          className="btn-carrinho"
+          onClick={(e) => {
+            e.stopPropagation();
+            removerDoCarrinho(listing);
+          }}
+          disabled={!quantidades[listing.id]}
+        >
+          -
+        </button>
+
+        <span className="quantidade-produto">
+          {quantidades[listing.id] || 0}
+        </span>
+
+        <button
+          className="btn-carrinho"
+          onClick={(e) => {
+            e.stopPropagation();
+            adicionarAoCarrinho(listing);
+          }}
+          disabled={listing.stock === 0 || (quantidades[listing.id] >= listing.stock)}
+        >
+          +
+        </button>
+      </>
+    );
+  }, [produtos, quantidades, adicionarAoCarrinho, removerDoCarrinho]);
+
   const handleCardClick = (e, produto) => {
-    if (e.target.closest('.produto-controles-loja')) {
-      return;
-    }
-    abrirModal(produto);
+    if (e.target.closest('.produto-controles-loja')) return;
+    
+    abrirModalProduto({
+      ...produto,
+      images: produto.images || [produto.imagem]
+    }, {
+      showControls: true,
+      renderControls,
+      onStoreClick: () => {} // Já estamos na página da loja
+    });
   };
 
   if (loading) {
@@ -204,7 +246,10 @@ const PerfilLoja = () => {
                 <div className="produto-controles-loja">
                   <button
                     className="btn-carrinho"
-                    onClick={() => removerDoCarrinho(listing)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removerDoCarrinho(listing);
+                    }}
                     disabled={!quantidades[listing.id]}
                   >
                     -
@@ -216,7 +261,10 @@ const PerfilLoja = () => {
 
                   <button
                     className="btn-carrinho"
-                    onClick={() => adicionarAoCarrinho(listing)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      adicionarAoCarrinho(listing);
+                    }}
                     disabled={listing.stock === 0 || (quantidades[listing.id] >= listing.stock)}
                   >
                     +
@@ -226,43 +274,11 @@ const PerfilLoja = () => {
                 {listing.stock === 0 && (
                   <p className="produto-sem-estoque">Sem estoque</p>
                 )}
-                {listing.stock > 0 && listing.stock < 10 && (
-                  <p className="produto-estoque-baixo">
-                    Apenas {listing.stock} em estoque
-                  </p>
-                )}
               </div>
             ))}
           </div>
         )}
       </div>
-
-      <ProductModal
-        showControls={true}
-        renderControls={(produto) => (
-          <>
-            <button
-              className="btn-carrinho"
-              onClick={() => removerDoCarrinho(produtos.find(p => p.products.name === produto.nome))}
-              disabled={!quantidades[produto.id]}
-            >
-              -
-            </button>
-
-            <span className="quantidade-produto">
-              {quantidades[produto.id] || 0}
-            </span>
-
-            <button
-              className="btn-carrinho"
-              onClick={() => adicionarAoCarrinho(produtos.find(p => p.products.name === produto.nome))}
-              disabled={produto.stock === 0 || (quantidades[produto.id] >= produto.stock)}
-            >
-              +
-            </button>
-          </>
-        )}
-      />
     </div>
   );
 };

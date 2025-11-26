@@ -8,6 +8,7 @@ import Loja from './pages/Loja'
 import PerfilLoja from './pages/PerfilLoja'
 import './styles/reset.css'
 import './styles/global.css'
+import { ProductModalProvider}from '../src/contexts/ProductModalContext'
 
 // Componente interno que tem acesso ao contexto
 function AppRoutes() {
@@ -24,15 +25,16 @@ function AppRoutes() {
   )
 }
 
-// Componente principal
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter basename="/Marketplace">
-        <AppRoutes />
-      </BrowserRouter>
-    </AuthProvider>
-  )
+    <ProductModalProvider>
+      <AuthProvider>
+        <BrowserRouter basename="/Marketplace">
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
+    </ProductModalProvider>
+  );
 }
 
 export default App

@@ -1,5 +1,3 @@
-/* PerfilLoja.css - Apenas estilos específicos da página */
-
 .perfil-loja-container {
   min-height: 100vh;
   background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
@@ -108,15 +106,6 @@
   justify-content: center;
   gap: 1rem;
   padding: 0 1.5rem 1.5rem 1.5rem;
-}
-
-.produto-estoque-baixo {
-  text-align: center;
-  font-size: 14px;
-  font-weight: 700;
-  padding: 0 1.5rem 1.5rem 1.5rem;
-  margin: 0;
-  color: #f59e0b;
 }
 
 /* Responsivo */

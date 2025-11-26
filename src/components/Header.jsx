@@ -1,90 +1,57 @@
 import { useState, useEffect } from 'react'
-import { Search, User, Heart, ShoppingCart } from 'lucide-react'
+import { Search, User, ShoppingCart } from 'lucide-react' // Removi Heart se não for usado
 import { Link } from 'react-router-dom'
 import './Header.css'
 import SearchSystem from './SearchSystem'
 import Produtos from './Produtos'
 import { supabase } from '../lib/supabase'
 import Carrossel from "./Carrossel"
-import { useSlug } from '../hooks/useSlug' // 1. Importação do hook
+import { useSlug } from '../hooks/useSlug'
+import { useProductModalContext } from '../contexts/ProductModalContext' 
 
 function Header({ user }) {
-  const [produtoSelecionado, setProdutoSelecionado] = useState(null);
-  const [modalAberto, setModalAberto] = useState(false);
+  // Removido: States locais de modal (produtoSelecionado, modalAberto)
   const [pedidosPendentes, setPedidosPendentes] = useState(0);
-  const { createSlug } = useSlug(); // 2. Uso do hook
+  
+  const { createSlug } = useSlug();
+  
+  // 2. Usar o contexto para pegar a função de abrir e o componente do Modal
+  const { abrirModalProduto, ProductModal } = useProductModalContext();
 
   useEffect(() => {
     if (user) {
       carregarPedidosPendentes();
 
-      // Configurar listener Realtime para mudanças em orders
       const subscription = supabase
         .channel('orders_changes')
         .on(
           'postgres_changes',
-          {
-            event: '*', // Escuta INSERT, UPDATE, DELETE
-            schema: 'public',
-            table: 'orders'
-          },
-          (payload) => {
-            // Recarregar contagem quando houver qualquer mudança
-            carregarPedidosPendentes();
-          }
+          { event: '*', schema: 'public', table: 'orders' },
+          (payload) => { carregarPedidosPendentes(); }
         )
         .subscribe();
 
-      return () => {
-        subscription.unsubscribe();
-      };
+      return () => { subscription.unsubscribe(); };
     }
   }, [user]);
 
   const carregarPedidosPendentes = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('get-pending-orders-count', {
-        body: {}
-      })
-
-      if (error) {
-        console.error('Erro ao carregar pendentes:', error)
-        return
-      }
-
-      setPedidosPendentes(data?.count || 0)
+      const { data, error } = await supabase.functions.invoke('get-pending-orders-count', { body: {} })
+      if (!error) setPedidosPendentes(data?.count || 0)
     } catch (error) {
       console.error('Erro ao carregar pedidos pendentes:', error)
     }
   };
 
-  const handleProductSelect = (produto) => {
-    const produtoFormatado = {
-      id: produto.listings?.[0]?.id || produto.id,
-      productId: produto.id,
-      nome: produto.name,
-      descricao: produto.description,
-      preco: produto.precoMinimo,
-      stock: produto.totalEstoque,
-      categoria: produto.category,
-      subcategoria: produto.subcategory,
-      loja: produto.listings?.[0]?.stores?.name || 'Loja',
-      imagem: produto.images?.[0]
-    };
-
-    setProdutoSelecionado(produtoFormatado);
-    setModalAberto(true);
-  };
+  // Removido: handleProductSelect (A lógica de formatação já existe dentro de abrirModalProduto no Context)
 
   const handleStoreSelect = (loja) => {
     const slug = createSlug(loja.name);
     window.location.href = `/loja/${slug}`;
   };
 
-  const fecharModal = () => {
-    setModalAberto(false);
-    setProdutoSelecionado(null);
-  };
+  // Removido: fecharModal (Gerenciado pelo Context)
 
   return (
     <div className="header">
@@ -111,18 +78,18 @@ function Header({ user }) {
 
       <div className="header-search">
         <div className="search-wrapper">
+
           <SearchSystem
-            onProductSelect={handleProductSelect}
+            onProductSelect={abrirModalProduto}
             onStoreSelect={handleStoreSelect}
           />
         </div>
         <Carrossel />
       </div>
 
+      {/* Nota: Você precisará ajustar o componente Produtos para aceitar `onProdutoClick` ao invés de controlar o modal ele mesmo */}
       <Produtos
-        produtoSelecionado={produtoSelecionado}
-        modalAberto={modalAberto}
-        onFecharModal={fecharModal}
+        onProdutoClick={abrirModalProduto}
       />
     </div>
   )

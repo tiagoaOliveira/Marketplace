@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cartService } from '../lib/services';
 import { auth, supabase } from '../lib/supabase';
-import { useProductModal } from '../hooks/useProductModal.jsx';
+import { useProductModalContext } from '../contexts/ProductModalContext.jsx'; // ✅ CORRETO
 import './Carrinho.css';
 import { RxArrowLeft } from "react-icons/rx";
 import { FaTrash } from "react-icons/fa";
@@ -10,7 +10,7 @@ import { useSlug } from '../hooks/useSlug';
 
 const CarrinhoCompras = () => {
   const navigate = useNavigate();
-  const { abrirModal, ProductModal } = useProductModal();
+  const { abrirModalProduto } = useProductModalContext();
   const { createSlug } = useSlug();
 
   const [itensCarrinho, setItensCarrinho] = useState([]);
@@ -132,116 +132,116 @@ const CarrinhoCompras = () => {
   };
 
   const finalizarCompra = async () => {
-  if (!user || itensCarrinho.length === 0) return;
+    if (!user || itensCarrinho.length === 0) return;
 
-  setFinalizando(true);
-  try {
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('fullname, email, phone, cep, rua, numero, bairro, cidade')
-      .eq('id', user.id)
-      .single();
+    setFinalizando(true);
+    try {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('fullname, email, phone, cep, rua, numero, bairro, cidade')
+        .eq('id', user.id)
+        .single();
 
-    if (userError) {
-      console.error('Erro ao obter dados do usuário:', userError);
-      setMensagemErro('Erro ao carregar seus dados. Tente novamente.');
+      if (userError) {
+        console.error('Erro ao obter dados do usuário:', userError);
+        setMensagemErro('Erro ao carregar seus dados. Tente novamente.');
+        setModalErro(true);
+        setFinalizando(false);
+        return;
+      }
+
+      if (!verificarPerfilCompleto(userData)) {
+        setShowPerfilIncompleto(true);
+        setFinalizando(false);
+        return;
+      }
+
+      // Armazena dados e mostra modal de confirmação
+      setDadosUsuario(userData);
+      setShowConfirmacao(true);
+      setFinalizando(false);
+
+    } catch (error) {
+      console.error('Erro ao finalizar compra:', error);
+      setMensagemErro('Erro ao finalizar compra. Tente novamente.');
       setModalErro(true);
       setFinalizando(false);
-      return;
     }
+  };
 
-    if (!verificarPerfilCompleto(userData)) {
-      setShowPerfilIncompleto(true);
-      setFinalizando(false);
-      return;
-    }
+  const confirmarPedido = async () => {
+    setFinalizando(true);
+    setShowConfirmacao(false);
 
-    // Armazena dados e mostra modal de confirmação
-    setDadosUsuario(userData);
-    setShowConfirmacao(true);
-    setFinalizando(false);
+    try {
+      const totalAmount = calcularTotal();
 
-  } catch (error) {
-    console.error('Erro ao finalizar compra:', error);
-    setMensagemErro('Erro ao finalizar compra. Tente novamente.');
-    setModalErro(true);
-    setFinalizando(false);
-  }
-};
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert([
+          {
+            user_id: user.id,
+            buyer_name: dadosUsuario.fullname || user.email,
+            buyer_email: dadosUsuario.email,
+            buyer_phone: dadosUsuario.phone,
+            buyer_cep: dadosUsuario.cep,
+            buyer_rua: dadosUsuario.rua,
+            buyer_numero: dadosUsuario.numero,
+            buyer_bairro: dadosUsuario.bairro,
+            buyer_cidade: dadosUsuario.cidade,
+            total_amount: totalAmount
+          }
+        ])
+        .select();
 
-const confirmarPedido = async () => {
-  setFinalizando(true);
-  setShowConfirmacao(false);
+      if (orderError) {
+        console.error('Erro ao criar pedido:', orderError);
+        setMensagemErro('Erro ao criar o pedido. Tente novamente.');
+        setModalErro(true);
+        setFinalizando(false);
+        return;
+      }
 
-  try {
-    const totalAmount = calcularTotal();
+      const orderId = order[0].id;
+      setOrderId(orderId);
 
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert([
-        {
-          user_id: user.id,
-          buyer_name: dadosUsuario.fullname || user.email,
-          buyer_email: dadosUsuario.email,
-          buyer_phone: dadosUsuario.phone,
-          buyer_cep: dadosUsuario.cep,
-          buyer_rua: dadosUsuario.rua,
-          buyer_numero: dadosUsuario.numero,
-          buyer_bairro: dadosUsuario.bairro,
-          buyer_cidade: dadosUsuario.cidade,
-          total_amount: totalAmount
-        }
-      ])
-      .select();
+      const orderItems = itensCarrinho.map(item => ({
+        order_id: orderId,
+        product_listing_id: item.productListingId,
+        product_name: item.nome,
+        store_id: item.storeId,
+        store_name: item.storeName,
+        price: item.preco,
+        quantity: item.quantidade,
+        subtotal: item.preco * item.quantidade
+      }));
 
-    if (orderError) {
-      console.error('Erro ao criar pedido:', orderError);
-      setMensagemErro('Erro ao criar o pedido. Tente novamente.');
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('Erro ao adicionar itens do pedido:', itemsError);
+        setMensagemErro('Erro ao processar itens do pedido. Tente novamente.');
+        setModalErro(true);
+        setFinalizando(false);
+        return;
+      }
+
+      if (cartId) {
+        await cartService.clearCart(cartId);
+      }
+      setItensCarrinho([]);
+      setModalSucesso(true);
+
+    } catch (error) {
+      console.error('Erro ao confirmar pedido:', error);
+      setMensagemErro('Erro ao confirmar pedido. Tente novamente.');
       setModalErro(true);
+    } finally {
       setFinalizando(false);
-      return;
     }
-
-    const orderId = order[0].id;
-    setOrderId(orderId);
-
-    const orderItems = itensCarrinho.map(item => ({
-      order_id: orderId,
-      product_listing_id: item.productListingId,
-      product_name: item.nome,
-      store_id: item.storeId,
-      store_name: item.storeName,
-      price: item.preco,
-      quantity: item.quantidade,
-      subtotal: item.preco * item.quantidade
-    }));
-
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
-
-    if (itemsError) {
-      console.error('Erro ao adicionar itens do pedido:', itemsError);
-      setMensagemErro('Erro ao processar itens do pedido. Tente novamente.');
-      setModalErro(true);
-      setFinalizando(false);
-      return;
-    }
-
-    if (cartId) {
-      await cartService.clearCart(cartId);
-    }
-    setItensCarrinho([]);
-    setModalSucesso(true);
-
-  } catch (error) {
-    console.error('Erro ao confirmar pedido:', error);
-    setMensagemErro('Erro ao confirmar pedido. Tente novamente.');
-    setModalErro(true);
-  } finally {
-    setFinalizando(false);
-  }
-};
+  };
 
   const handleFecharModalSucesso = () => {
     setModalSucesso(false);
@@ -249,10 +249,11 @@ const confirmarPedido = async () => {
   };
 
   const handleItemClick = (e, item) => {
-    if (e.target.closest('.item-controles') || e.target.closest('.btn-remover')) {
-      return;
-    }
-    abrirModal(item);
+    if (e.target.closest('.item-controles') || e.target.closest('.btn-remover')) return;
+    abrirModalProduto(item, {
+      showControls: true,
+      onStoreClick: irParaLoja
+    });
   };
 
   const irParaLoja = (nomeLoja) => {
@@ -347,61 +348,61 @@ const confirmarPedido = async () => {
       )}
 
       {/* Modal de Confirmação */}
-{showConfirmacao && dadosUsuario && (
-  <div className="modal-perfil-incompleto">
-    <div className="modal-perfil-content" style={{ maxWidth: '600px' }}>
-      <button
-        className="modal-perfil-fechar"
-        onClick={() => setShowConfirmacao(false)}
-      >
-        ×
-      </button>
-      <div className="modal-perfil-icone">📋</div>
-      <h2>Confirme seus Dados</h2>
-      
-      <div className="campos-faltando" style={{ textAlign: 'left' }}>
-        <div style={{ marginBottom: '1rem' }}>
-          <strong style={{ color: '#667eea' }}>Nome:</strong>
-          <p style={{ margin: '0.25rem 0 0 0', color: '#1e293b' }}>{dadosUsuario.fullname}</p>
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <strong style={{ color: '#667eea' }}>Telefone:</strong>
-          <p style={{ margin: '0.25rem 0 0 0', color: '#1e293b' }}>{dadosUsuario.phone}</p>
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <strong style={{ color: '#667eea' }}>Endereço:</strong>
-          <p style={{ margin: '0.25rem 0 0 0', color: '#1e293b' }}>
-            {dadosUsuario.rua}, {dadosUsuario.numero}<br/>
-            {dadosUsuario.bairro} - {dadosUsuario.cidade}<br/>
-            CEP: {dadosUsuario.cep}
-          </p>
-        </div>
-      </div>
+      {showConfirmacao && dadosUsuario && (
+        <div className="modal-perfil-incompleto">
+          <div className="modal-perfil-content" style={{ maxWidth: '600px' }}>
+            <button
+              className="modal-perfil-fechar"
+              onClick={() => setShowConfirmacao(false)}
+            >
+              ×
+            </button>
+            <div className="modal-perfil-icone">📋</div>
+            <h2>Confirme seus Dados</h2>
 
-      <div style={{ display: 'flex', gap: '1rem' }}>
-        <button
-          className="btn"
-          style={{ 
-            flex: 1,
-            background: '#94a3b8',
-            color: 'white'
-          }}
-          onClick={() => setShowConfirmacao(false)}
-        >
-          Cancelar
-        </button>
-        <button
-          className="btn"
-          style={{ flex: 1 }}
-          onClick={confirmarPedido}
-          disabled={finalizando}
-        >
-          {finalizando ? 'Processando...' : 'Confirmar Pedido'}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            <div className="campos-faltando" style={{ textAlign: 'left' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <strong style={{ color: '#667eea' }}>Nome:</strong>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#1e293b' }}>{dadosUsuario.fullname}</p>
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <strong style={{ color: '#667eea' }}>Telefone:</strong>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#1e293b' }}>{dadosUsuario.phone}</p>
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <strong style={{ color: '#667eea' }}>Endereço:</strong>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#1e293b' }}>
+                  {dadosUsuario.rua}, {dadosUsuario.numero}<br />
+                  {dadosUsuario.bairro} - {dadosUsuario.cidade}<br />
+                  CEP: {dadosUsuario.cep}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                className="btn"
+                style={{
+                  flex: 1,
+                  background: '#94a3b8',
+                  color: 'white'
+                }}
+                onClick={() => setShowConfirmacao(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn"
+                style={{ flex: 1 }}
+                onClick={confirmarPedido}
+                disabled={finalizando}
+              >
+                {finalizando ? 'Processando...' : 'Confirmar Pedido'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {itensCarrinho.length === 0 ? (
         <div className="carrinho-vazio">
@@ -499,11 +500,7 @@ const confirmarPedido = async () => {
         </div>
       )}
 
-      {/* Modal do Produto usando o hook */}
-      <ProductModal
-        showControls={false}
-        onStoreClick={irParaLoja}
-      />
+
 
       {/* Modal de Sucesso */}
       {modalSucesso && (

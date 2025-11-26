@@ -1,18 +1,248 @@
--- Habilitar extensão PostGIS (se ainda não estiver habilitada)
-CREATE EXTENSION IF NOT EXISTS postgis;
+-- ============================================
+-- FUNÇÕES DE GEOLOCALIZAÇÃO CORRIGIDAS
+-- ============================================
 
--- Adicionar coluna de geolocalização na tabela users
-ALTER TABLE users 
-ADD COLUMN location GEOGRAPHY(Point, 4326);
+-- 1. Deletar funções antigas se existirem
+DROP FUNCTION IF EXISTS update_user_location(UUID, DOUBLE PRECISION, DOUBLE PRECISION);
+DROP FUNCTION IF EXISTS update_store_location(UUID, DOUBLE PRECISION, DOUBLE PRECISION);
 
--- Adicionar coluna de geolocalização na tabela stores
-ALTER TABLE stores 
-ADD COLUMN location GEOGRAPHY(Point, 4326);
+-- ============================================
+-- FUNÇÃO: Atualizar localização do usuário
+-- ============================================
+CREATE OR REPLACE FUNCTION update_user_location(
+  p_user_id UUID,
+  p_longitude DOUBLE PRECISION,
+  p_latitude DOUBLE PRECISION
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER -- Executa com privilégios do owner
+SET search_path = public -- Previne ataques de search_path
+AS $$
+DECLARE
+  v_result JSON;
+BEGIN
+  -- Validar coordenadas
+  IF p_longitude < -180 OR p_longitude > 180 THEN
+    RAISE EXCEPTION 'Longitude inválida: deve estar entre -180 e 180';
+  END IF;
+  
+  IF p_latitude < -90 OR p_latitude > 90 THEN
+    RAISE EXCEPTION 'Latitude inválida: deve estar entre -90 e 90';
+  END IF;
 
--- Criar índices espaciais para performance
-CREATE INDEX idx_users_location ON users USING GIST(location);
-CREATE INDEX idx_stores_location ON stores USING GIST(location);
+  -- Validar que o usuário existe e pertence ao auth.uid()
+  IF NOT EXISTS (SELECT 1 FROM users WHERE id = p_user_id AND id = auth.uid()) THEN
+    RAISE EXCEPTION 'Usuário não encontrado ou sem permissão';
+  END IF;
 
--- Comentários para documentação
-COMMENT ON COLUMN users.location IS 'Localização geográfica (longitude, latitude) baseada no CEP';
-COMMENT ON COLUMN stores.location IS 'Localização geográfica (longitude, latitude) baseada no endereço';
+  -- Atualizar localização
+  UPDATE users
+  SET location = ST_SetSRID(ST_MakePoint(p_longitude, p_latitude), 4326)::geography
+  WHERE id = p_user_id;
+
+  -- Retornar resultado
+  SELECT json_build_object(
+    'id', id,
+    'longitude', ST_X(location::geometry),
+    'latitude', ST_Y(location::geometry),
+    'updated', true
+  )
+  INTO v_result
+  FROM users
+  WHERE id = p_user_id;
+
+  RETURN v_result;
+END;
+$$;
+
+-- ============================================
+-- FUNÇÃO: Atualizar localização da loja
+-- ============================================
+CREATE OR REPLACE FUNCTION update_store_location(
+  p_store_id UUID,
+  p_longitude DOUBLE PRECISION,
+  p_latitude DOUBLE PRECISION
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result JSON;
+BEGIN
+  -- Validar coordenadas
+  IF p_longitude < -180 OR p_longitude > 180 THEN
+    RAISE EXCEPTION 'Longitude inválida: deve estar entre -180 e 180';
+  END IF;
+  
+  IF p_latitude < -90 OR p_latitude > 90 THEN
+    RAISE EXCEPTION 'Latitude inválida: deve estar entre -90 e 90';
+  END IF;
+
+  -- Validar que a loja existe e pertence ao usuário autenticado
+  IF NOT EXISTS (
+    SELECT 1 FROM stores 
+    WHERE id = p_store_id 
+    AND user_id = auth.uid()
+  ) THEN
+    RAISE EXCEPTION 'Loja não encontrada ou sem permissão';
+  END IF;
+
+  -- Atualizar localização
+  UPDATE stores
+  SET location = ST_SetSRID(ST_MakePoint(p_longitude, p_latitude), 4326)::geography
+  WHERE id = p_store_id;
+
+  -- Retornar resultado
+  SELECT json_build_object(
+    'id', id,
+    'longitude', ST_X(location::geometry),
+    'latitude', ST_Y(location::geometry),
+    'updated', true
+  )
+  INTO v_result
+  FROM stores
+  WHERE id = p_store_id;
+
+  RETURN v_result;
+END;
+$$;
+
+-- ============================================
+-- FUNÇÃO: Buscar lojas próximas (raio em metros)
+-- ============================================
+CREATE OR REPLACE FUNCTION get_nearby_stores(
+  p_longitude DOUBLE PRECISION,
+  p_latitude DOUBLE PRECISION,
+  p_radius_meters INTEGER DEFAULT 5000
+)
+RETURNS TABLE(
+  id UUID,
+  name TEXT,
+  category TEXT,
+  distance_meters DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
+  latitude DOUBLE PRECISION
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Validar coordenadas
+  IF p_longitude < -180 OR p_longitude > 180 THEN
+    RAISE EXCEPTION 'Longitude inválida: deve estar entre -180 e 180';
+  END IF;
+  
+  IF p_latitude < -90 OR p_latitude > 90 THEN
+    RAISE EXCEPTION 'Latitude inválida: deve estar entre -90 e 90';
+  END IF;
+
+  IF p_radius_meters <= 0 OR p_radius_meters > 50000 THEN
+    RAISE EXCEPTION 'Raio deve estar entre 1 e 50000 metros';
+  END IF;
+
+  RETURN QUERY
+  SELECT 
+    s.id,
+    s.name,
+    s.category,
+    ST_Distance(
+      s.location,
+      ST_SetSRID(ST_MakePoint(p_longitude, p_latitude), 4326)::geography
+    ) as distance_meters,
+    ST_X(s.location::geometry) as longitude,
+    ST_Y(s.location::geometry) as latitude
+  FROM stores s
+  WHERE 
+    s.is_approved = true
+    AND s.location IS NOT NULL
+    AND ST_DWithin(
+      s.location,
+      ST_SetSRID(ST_MakePoint(p_longitude, p_latitude), 4326)::geography,
+      p_radius_meters
+    )
+  ORDER BY distance_meters ASC;
+END;
+$$;
+
+-- ============================================
+-- FUNÇÃO: Calcular distância entre usuário e loja
+-- ============================================
+CREATE OR REPLACE FUNCTION calculate_distance_to_store(
+  p_user_id UUID,
+  p_store_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_distance DOUBLE PRECISION;
+  v_result JSON;
+BEGIN
+  -- Calcular distância
+  SELECT ST_Distance(u.location, s.location)
+  INTO v_distance
+  FROM users u, stores s
+  WHERE u.id = p_user_id 
+  AND s.id = p_store_id
+  AND u.location IS NOT NULL
+  AND s.location IS NOT NULL;
+
+  -- Se não encontrou localizações
+  IF v_distance IS NULL THEN
+    RETURN json_build_object(
+      'error', 'Localização não disponível para usuário ou loja'
+    );
+  END IF;
+
+  -- Retornar resultado
+  RETURN json_build_object(
+    'distance_meters', v_distance,
+    'distance_km', ROUND((v_distance / 1000)::numeric, 2)
+  );
+END;
+$$;
+
+-- ============================================
+-- COMENTÁRIOS PARA DOCUMENTAÇÃO
+-- ============================================
+COMMENT ON FUNCTION update_user_location IS 'Atualiza localização geográfica do usuário (apenas owner pode executar)';
+COMMENT ON FUNCTION update_store_location IS 'Atualiza localização geográfica da loja (apenas owner pode executar)';
+COMMENT ON FUNCTION get_nearby_stores IS 'Busca lojas aprovadas próximas a uma coordenada (raio em metros)';
+COMMENT ON FUNCTION calculate_distance_to_store IS 'Calcula distância em metros entre usuário e loja';
+
+-- ============================================
+-- EXEMPLOS DE USO
+-- ============================================
+
+-- Atualizar localização do usuário
+-- SELECT update_user_location(
+--   'user-uuid-aqui'::UUID,
+--   -46.6333, -- longitude (São Paulo)
+--   -23.5505  -- latitude (São Paulo)
+-- );
+
+-- Atualizar localização da loja
+-- SELECT update_store_location(
+--   'store-uuid-aqui'::UUID,
+--   -46.6333,
+--   -23.5505
+-- );
+
+-- Buscar lojas em 5km de raio
+-- SELECT * FROM get_nearby_stores(
+--   -46.6333,
+--   -23.5505,
+--   5000
+-- );
+
+-- Calcular distância entre usuário e loja
+-- SELECT calculate_distance_to_store(
+--   'user-uuid-aqui'::UUID,
+--   'store-uuid-aqui'::UUID
+-- );

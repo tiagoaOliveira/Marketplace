@@ -270,7 +270,6 @@ const carregarPedidos = async () => {
                 <div className="modal-overlay" onClick={() => setModalCancelar({ aberto: false, itemId: null })}>
                     <div className="modal-conteudo" onClick={(e) => e.stopPropagation()}>
                         <h3>Confirmar Cancelamento</h3>
-                        <p>Tem certeza que deseja cancelar este item?</p>
                         <p>Esta ação não poderá ser desfeita.</p>
                         <p>Envie uma mensagem ao comprador para evitar desentendimentos.</p>
                         <div className="modal-botoes">

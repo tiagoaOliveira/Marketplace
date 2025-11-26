@@ -1,0 +1,208 @@
+// ProductModalContext.jsx - ARQUIVO COMPLETO
+import { createContext, useContext, useState, useEffect, useCallback, memo } from 'react';
+import { createPortal } from 'react-dom';
+
+// ============ CONTEXTO ============
+const ProductModalContext = createContext();
+
+// ============ PROVIDER ============
+export const ProductModalProvider = ({ children }) => {
+  const [modalAberto, setModalAberto] = useState(false);
+  const [produtoSelecionado, setProdutoSelecionado] = useState(null);
+  const [modalOptions, setModalOptions] = useState({});
+
+  useEffect(() => {
+    document.body.style.overflow = modalAberto ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [modalAberto]);
+
+  const abrirModalProduto = useCallback((produto, options = {}) => {
+    const images = produto.images && Array.isArray(produto.images) && produto.images.length > 0
+      ? produto.images
+      : [produto.imagem].filter(Boolean);
+
+    const produtoNormalizado = {
+      id: produto.id || produto.listings?.[0]?.id,
+      productId: produto.productId || produto.id,
+      productListingId: produto.productListingId || produto.id,
+      nome: produto.nome || produto.name,
+      descricao: produto.descricao || produto.description,
+      preco: produto.preco || produto.precoMinimo || parseFloat(produto.price),
+      stock: produto.stock || produto.totalEstoque,
+      categoria: produto.categoria || produto.category,
+      subcategoria: produto.subcategoria || produto.subcategory,
+      loja: produto.loja || produto.storeName || produto.listings?.[0]?.stores?.name,
+      storeId: produto.storeId || produto.listings?.[0]?.store_id,
+      imagem: images[0],
+      images: images
+    };
+
+    setProdutoSelecionado(produtoNormalizado);
+    setModalOptions(options);
+    setModalAberto(true);
+  }, []);
+
+  const fecharModal = useCallback(() => {
+    setModalAberto(false);
+    setProdutoSelecionado(null);
+    setModalOptions({});
+  }, []);
+
+  return (
+    <ProductModalContext.Provider value={{ 
+      abrirModalProduto, 
+      fecharModal,
+      modalAberto, 
+      produtoSelecionado
+    }}>
+      {children}
+      {modalAberto && produtoSelecionado && (
+        <ProductModalComponent
+          produto={produtoSelecionado}
+          onClose={fecharModal}
+          {...modalOptions}
+        />
+      )}
+    </ProductModalContext.Provider>
+  );
+};
+
+// ============ HOOK ============
+export const useProductModalContext = () => {
+  const context = useContext(ProductModalContext);
+  if (!context) {
+    throw new Error('useProductModalContext deve ser usado dentro de ProductModalProvider');
+  }
+  return context;
+};
+
+// ============ COMPONENTE DO MODAL ============
+const ProductModalComponent = memo(({ 
+  produto, 
+  onClose, 
+  onStoreClick, 
+  showControls = false, 
+  renderControls 
+}) => {
+  const [imagemAtual, setImagemAtual] = useState(0);
+
+  useEffect(() => {
+    setImagemAtual(0);
+  }, [produto?.id]);
+
+  if (!produto) return null;
+
+  const imagens = (produto.images && produto.images.length > 0) 
+    ? produto.images 
+    : [produto.imagem].filter(Boolean);
+  
+  const temMultiplasImagens = imagens.length > 1;
+
+  const proximaImagem = () => {
+    setImagemAtual((prev) => (prev + 1) % imagens.length);
+  };
+
+  const imagemAnterior = () => {
+    setImagemAtual((prev) => (prev - 1 + imagens.length) % imagens.length);
+  };
+
+  const modalContent = (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content-products" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-fechar" onClick={onClose}>×</button>
+
+        <div className="modal-body">
+          <div className="modal-imagem">
+            {imagens[0] ? (
+              <img
+                src={imagens[imagemAtual]}
+                alt={`${produto.nome} - ${imagemAtual + 1}`}
+                onError={(e) => {
+                  e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect fill="%23f0f0f0"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999">Sem imagem</text></svg>';
+                }}
+              />
+            ) : (
+              <div style={{ 
+                width: '300px', 
+                height: '300px', 
+                background: '#f0f0f0', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center' 
+              }}>
+                Sem imagem
+              </div>
+            )}
+            
+            {temMultiplasImagens && (
+              <>
+                <button 
+                  className="modal-img-nav modal-img-prev" 
+                  onClick={(e) => { e.stopPropagation(); imagemAnterior(); }}
+                >
+                  ‹
+                </button>
+                <button 
+                  className="modal-img-nav modal-img-next" 
+                  onClick={(e) => { e.stopPropagation(); proximaImagem(); }}
+                >
+                  ›
+                </button>
+                <div className="modal-img-indicators">
+                  {imagens.map((_, index) => (
+                    <button
+                      key={index}
+                      className={`modal-img-dot ${index === imagemAtual ? 'active' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); setImagemAtual(index); }}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="modal-info">
+            <h2 className="modal-titulo">{produto.nome}</h2>
+
+            {produto.loja && (
+              <p className="modal-loja">
+                Vendido por: <strong 
+                  onClick={() => {
+                    if (onStoreClick) {
+                      onStoreClick(produto.loja || produto.storeName);
+                      onClose();
+                    }
+                  }}
+                  style={{ 
+                    cursor: onStoreClick ? 'pointer' : 'default',
+                    color: onStoreClick ? '#667eea' : 'inherit'
+                  }}
+                > 
+                  {produto.loja || produto.storeName}
+                </strong> {onStoreClick && '(Ver mais)'}
+              </p>
+            )}
+
+            <p className="modal-preco">
+              R$ {produto.preco.toFixed(2).replace('.', ',')}
+            </p>
+
+            {showControls && renderControls && (
+              <div className="modal-controles">
+                {renderControls(produto)}
+              </div>
+            )}
+
+            {produto.stock === 0 && (
+              <p className="produto-sem-estoque">Sem estoque</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return createPortal(modalContent, document.body);
+});
+
+ProductModalComponent.displayName = 'ProductModalComponent';

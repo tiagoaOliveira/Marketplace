@@ -1,22 +1,17 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listingsService, cartService } from '../lib/services';
 import { auth } from '../lib/supabase';
 import { useNotification } from '../hooks/useNotification';
-import { useProductModal } from '../hooks/useProductModal.jsx';
+import { useProductModalContext } from '../contexts/ProductModalContext.jsx';
 import './produtos.css';
 import { useSlug } from '../hooks/useSlug';
 
-const ProdutosShowcase = ({
-  categoriaFiltro,
-  produtoSelecionado: produtoSelecionadoExterno,
-  modalAberto: modalAbertoExterno,
-  onFecharModal: onFecharModalExterno
-}) => {
+const ProdutosShowcase = ({ categoriaFiltro }) => {
   const navigate = useNavigate();
   const { notification, showNotification } = useNotification();
-  const { abrirModal, fecharModal, ProductModal } = useProductModal();
   const { createSlug } = useSlug();
+  const { abrirModalProduto } = useProductModalContext();
 
   const [produtos, setProdutos] = useState([]);
   const [produtosFiltrados, setProdutosFiltrados] = useState([]);
@@ -24,21 +19,12 @@ const ProdutosShowcase = ({
   const [user, setUser] = useState(null);
   const [quantidades, setQuantidades] = useState({});
 
-
-  useEffect(() => {
-    if (modalAbertoExterno && produtoSelecionadoExterno) {
-      abrirModal(produtoSelecionadoExterno);
-    }
-  }, [modalAbertoExterno, produtoSelecionadoExterno]);
-
   useEffect(() => {
     const initialize = async () => {
       try {
         const currentUser = await auth.getUser();
         setUser(currentUser);
-
         await carregarProdutos();
-
         if (currentUser) {
           await carregarQuantidadesCarrinho(currentUser.id);
         }
@@ -48,7 +34,6 @@ const ProdutosShowcase = ({
         setLoading(false);
       }
     };
-
     initialize();
   }, []);
 
@@ -59,10 +44,7 @@ const ProdutosShowcase = ({
   const carregarProdutos = async () => {
     try {
       const { data, error } = await listingsService.getActiveListings();
-      if (error) {
-        console.error('Erro ao carregar produtos:', error);
-        return;
-      }
+      if (error) return;
 
       const produtosMap = {};
       data.forEach(listing => {
@@ -83,154 +65,108 @@ const ProdutosShowcase = ({
           };
         }
       });
-
-      const produtosArray = Object.values(produtosMap);
-      setProdutos(produtosArray);
+      setProdutos(Object.values(produtosMap));
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
     }
   };
 
   const filtrarProdutos = () => {
-    let produtosFiltrados = [...produtos];
-
+    let filtrados = [...produtos];
     if (categoriaFiltro) {
-      produtosFiltrados = produtos.filter(produto =>
-        produto.categoria === categoriaFiltro ||
-        produto.subcategoria === categoriaFiltro
+      filtrados = produtos.filter(produto =>
+        produto.categoria === categoriaFiltro || produto.subcategoria === categoriaFiltro
       );
     }
-
-    if (!categoriaFiltro && produtosFiltrados.length > 30) {
-      const shuffled = [...produtosFiltrados].sort(() => 0.5 - Math.random());
-      produtosFiltrados = shuffled.slice(0, 30);
+    if (!categoriaFiltro && filtrados.length > 30) {
+      const shuffled = [...filtrados].sort(() => 0.5 - Math.random());
+      filtrados = shuffled.slice(0, 30);
     }
-
-    setProdutosFiltrados(produtosFiltrados);
+    setProdutosFiltrados(filtrados);
   };
 
   const carregarQuantidadesCarrinho = async (userId) => {
     try {
-      const { data: cart, error } = await cartService.getActiveCart(userId);
-
-      if (error && error.code !== 'PGRST116') return;
-
-      if (cart && cart.cart_items) {
+      const { data: cart } = await cartService.getActiveCart(userId);
+      if (cart?.cart_items) {
         const qtds = {};
         cart.cart_items.forEach(item => {
           qtds[item.product_listing_id] = item.quantity;
         });
         setQuantidades(qtds);
       }
-    } catch (error) {
-      console.error('Erro ao carregar quantidades:', error);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   const adicionarAoCarrinho = useCallback(async (listing) => {
     if (!user) {
-      fecharModal();
-      showNotification('Faça login para adicionar produtos ao carrinho', 'warning');
+      showNotification('Faça login para adicionar ao carrinho', 'warning');
       return;
     }
-
     try {
-      let { data: cart, error } = await cartService.getActiveCart(user.id);
-
-      if (error || !cart) {
-        const { data: newCart, error: createError } = await cartService.createCart(user.id);
-        if (createError) {
-          console.error('Erro ao criar carrinho:', createError);
-          return;
-        }
+      let { data: cart } = await cartService.getActiveCart(user.id);
+      if (!cart) {
+        const { data: newCart } = await cartService.createCart(user.id);
         cart = newCart[0];
       }
-
-      const { error: addError } = await cartService.addToCart(
-        cart.id,
-        listing.id,
-        1
-      );
-
-      if (addError) {
-        console.error('Erro ao adicionar ao carrinho:', addError);
-        return;
-      }
-
-      setQuantidades(prev => ({
-        ...prev,
-        [listing.id]: (prev[listing.id] || 0) + 1
-      }));
-
+      await cartService.addToCart(cart.id, listing.id, 1);
+      
+      // Atualiza o estado localmente
+      setQuantidades(prev => {
+        const novaQuantidade = (prev[listing.id] || 0) + 1;
+        return { ...prev, [listing.id]: novaQuantidade };
+      });
     } catch (error) {
-      console.error('Erro ao adicionar ao carrinho:', error);
+      console.error(error);
     }
-  }, [user, fecharModal, showNotification]);
+  }, [user, showNotification]);
 
   const removerDoCarrinho = useCallback(async (listing) => {
     if (!user) return;
-
     try {
       const { data: cart } = await cartService.getActiveCart(user.id);
-      if (!cart || !cart.cart_items) return;
-
-      const item = cart.cart_items.find(item =>
-        item.product_listing_id === listing.id
-      );
-
+      const item = cart?.cart_items?.find(i => i.product_listing_id === listing.id);
       if (!item) return;
 
-      const novaQuantidade = item.quantity - 1;
-      const { error: updateError } = await cartService.updateCartItem(
-        item.id,
-        novaQuantidade
-      );
-
-      if (updateError) {
-        console.error('Erro ao remover do carrinho:', updateError);
-        return;
-      }
-
-      setQuantidades(prev => ({
-        ...prev,
-        [listing.id]: Math.max(0, (prev[listing.id] || 0) - 1)
-      }));
-
+      await cartService.updateCartItem(item.id, item.quantity - 1);
+      
+      // Atualiza o estado localmente
+      setQuantidades(prev => {
+        const novaQuantidade = Math.max(0, (prev[listing.id] || 0) - 1);
+        return { ...prev, [listing.id]: novaQuantidade };
+      });
     } catch (error) {
-      console.error('Erro ao remover do carrinho:', error);
+      console.error(error);
     }
   }, [user]);
 
   const irParaLoja = useCallback((nomeLoja) => {
     const slug = createSlug(nomeLoja);
     navigate(`/loja/${slug}`);
-  }, [navigate]);
+  }, [navigate, createSlug]);
 
-  const handleCardClick = useCallback((e, produto) => {
-    if (e.target.closest('.produto-controles')) {
-      return;
-    }
-    abrirModal(produto);
-  }, [abrirModal]);
-
-  // Memoizar os controles para evitar re-renders desnecessários
+  // IMPORTANTE: renderControls precisa ser estável para não causar re-render
   const renderControls = useCallback((produto) => (
     <>
       <button
         className="btn-carrinho btn-menos"
-        onClick={() => removerDoCarrinho(produto)}
-        disabled={!quantidades[produto.id] || quantidades[produto.id] === 0}
+        onClick={(e) => {
+          e.stopPropagation();
+          removerDoCarrinho(produto);
+        }}
+        disabled={!quantidades[produto.id]}
       >
         -
       </button>
-
-      <span className="quantidade-produto">
-        {quantidades[produto.id] || 0}
-      </span>
-
+      <span className="quantidade-produto">{quantidades[produto.id] || 0}</span>
       <button
         className="btn-carrinho btn-mais"
-        onClick={() => adicionarAoCarrinho(produto)}
+        onClick={(e) => {
+          e.stopPropagation();
+          adicionarAoCarrinho(produto);
+        }}
         disabled={produto.stock === 0 || (quantidades[produto.id] >= produto.stock)}
       >
         +
@@ -238,28 +174,17 @@ const ProdutosShowcase = ({
     </>
   ), [quantidades, adicionarAoCarrinho, removerDoCarrinho]);
 
-  if (loading) {
-    return (
-      <div className="produtos-container">
-        <p>Carregando produtos...</p>
-      </div>
-    );
-  }
+  const handleCardClick = (e, produto) => {
+    if (e.target.closest('.produto-controles')) return;
+    
+    abrirModalProduto(produto, {
+      showControls: true,
+      renderControls,
+      onStoreClick: irParaLoja
+    });
+  };
 
-  if (produtosFiltrados.length === 0) {
-    return (
-      <div className="produtos-container">
-        <div className="produtos-vazio">
-          <p>
-            {categoriaFiltro
-              ? `Nenhum produto encontrado na categoria "${categoriaFiltro}"`
-              : 'Nenhum produto disponível'
-            }
-          </p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="produtos-container">Carregando...</div>;
 
   return (
     <div className="produtos-container">
@@ -276,50 +201,38 @@ const ProdutosShowcase = ({
             className="produto-card"
             onClick={(e) => handleCardClick(e, produto)}
           >
-            <img
-              src={produto.imagem}
-              alt={produto.nome}
-              className="produto-imagem"
-            />
+            <img src={produto.imagem} alt={produto.nome} className="produto-imagem" />
             <h3 className="produto-nome-produtos">{produto.nome}</h3>
-            <p className="produto-preco">
-              R$ {produto.preco.toFixed(2).replace('.', ',')}
-            </p>
+            <p className="produto-preco">R$ {produto.preco.toFixed(2).replace('.', ',')}</p>
 
             <div className="produto-controles">
               <button
                 className="btn-carrinho btn-menos"
-                onClick={() => removerDoCarrinho(produto)}
-                disabled={!quantidades[produto.id] || quantidades[produto.id] === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removerDoCarrinho(produto);
+                }}
+                disabled={!quantidades[produto.id]}
               >
                 -
               </button>
-
-              <span className="quantidade-produto">
-                {quantidades[produto.id] || 0}
-              </span>
-
+              <span className="quantidade-produto">{quantidades[produto.id] || 0}</span>
               <button
                 className="btn-carrinho btn-mais"
-                onClick={() => adicionarAoCarrinho(produto)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  adicionarAoCarrinho(produto);
+                }}
                 disabled={produto.stock === 0 || (quantidades[produto.id] >= produto.stock)}
               >
                 +
               </button>
             </div>
 
-            {produto.stock === 0 && (
-              <p className="produto-sem-estoque">Sem estoque</p>
-            )}
+            {produto.stock === 0 && <p className="produto-sem-estoque">Sem estoque</p>}
           </div>
         ))}
       </div>
-
-      <ProductModal
-        onStoreClick={irParaLoja}
-        showControls={true}
-        renderControls={renderControls}
-      />
     </div>
   );
 };

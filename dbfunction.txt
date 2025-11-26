@@ -1,0 +1,39 @@
+CREATE OR REPLACE FUNCTION auth_user_id()
+RETURNS UUID
+LANGUAGE SQL STABLE
+AS $$
+  SELECT auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION is_store_owner(p_store_id UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL STABLE SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM stores 
+    WHERE id = p_store_id 
+    AND user_id = auth.uid()
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION is_cart_owner(p_cart_id UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL STABLE SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM carts 
+    WHERE id = p_cart_id 
+    AND user_id = auth.uid()
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION is_order_owner(p_order_id UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL STABLE SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM orders 
+    WHERE id = p_order_id 
+    AND user_id = auth.uid()
+  );
+$$;

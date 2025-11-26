@@ -10,15 +10,11 @@
   background-clip: padding-box, border-box;
 }
 
-.form-section {
-  margin-bottom: 2rem;
-}
 
 .form-section h3 {
   color: #1e293b;
   font-size: 20px;
   font-weight: 700;
-  margin-bottom: 1.5rem;
   padding-bottom: 0.75rem;
   border-bottom: 2px solid #f1f5f9;
 }
