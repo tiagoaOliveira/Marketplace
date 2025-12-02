@@ -330,6 +330,15 @@ export const storesService = {
     return { data, error: error?.message }
   },
 
+  async getStoresByUserCity(userId) {
+    const { data, error } = await supabase
+      .rpc('get_stores_by_user_city', {
+        p_user_id: userId
+      })
+
+    return { data, error: error?.message }
+  },
+
   // Buscar loja por ID
   async getStoreById(storeId) {
     const { data, error } = await supabase

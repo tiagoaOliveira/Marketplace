@@ -11,7 +11,7 @@ import { X } from 'lucide-react';
 import { RxArrowLeft } from "react-icons/rx";
 import { Notification } from '../components/Notification';
 import { useNotification } from '../hooks/useNotification';
-import StoreForm from './StoreForm'; // Importa o novo componente
+import StoreForm from './StoreForm'; 
 import './Loja.css';
 import { useSlug } from '../hooks/useSlug';
 

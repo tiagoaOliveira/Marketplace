@@ -241,6 +241,7 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -523,8 +524,13 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
@@ -532,6 +538,7 @@
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -542,7 +549,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 2px solid #f1f5f9;
 }
@@ -576,7 +582,7 @@
 }
 
 .modal-form .form-group-loja {
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.5rem;
 }
 
 .modal-form .form-actions {
@@ -586,6 +592,16 @@
   margin-top: 1.5rem;
   padding-top: 1.25rem;
   border-top: 2px solid #f1f5f9;
+}
+
+.form-actions button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 /* Botões globais */
@@ -681,7 +697,7 @@
   }
 
   .product-actions {
-    width:50%;
+    width: 50%;
     justify-content: stretch;
   }
 

@@ -12,7 +12,6 @@ CREATE TABLE cart_items (
   cart_id UUID NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
   product_listing_id UUID NOT NULL REFERENCES product_listings(id) ON DELETE CASCADE,
   quantity INT NOT NULL CHECK (quantity > 0),
-  price_snapshot NUMERIC(10,2) NOT NULL CHECK (price_snapshot >= 0),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -23,12 +22,15 @@ CREATE INDEX idx_cart_items_cart ON cart_items(cart_id);
 CREATE INDEX idx_cart_items_product_listing_id ON cart_items(product_listing_id);
 
 -- RLS
-
 CREATE POLICY carts_owner ON carts
   FOR ALL TO authenticated
   USING (auth_user_id() = user_id)
   WITH CHECK (auth_user_id() = user_id);
-  
+
+-- ============================================
+-- CART ITEMS
+-- ============================================
+
 CREATE POLICY cart_items_owner ON cart_items
   FOR ALL TO authenticated
   USING (is_cart_owner(cart_id))

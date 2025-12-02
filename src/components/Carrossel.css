@@ -36,9 +36,7 @@
 }
 
 .slide-track {
-  animation: scroll 60s linear infinite;
   display: flex;
-  width: calc(250px * 14);
   gap: 0.25rem;
 }
 
@@ -46,6 +44,15 @@
   height: 100px;
   width: 250px;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.slide:hover {
+  transform: scale(1.05);
+  z-index: 10;
 }
 
 .slide img {
@@ -55,11 +62,46 @@
   display: block;
 }
 
+/* Overlay com nome da loja */
+.slide-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  padding: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.slide:hover .slide-overlay {
+  opacity: 1;
+}
+
+.slide-store-name {
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Estados de loading e vazio */
+.carrossel-loading,
+.carrossel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  color: #666;
+  font-size: 0.875rem;
+  padding: 1rem;
+  text-align: center;
+}
+
 @keyframes scroll {
   0% {
     transform: translateX(0);
   }
-
   100% {
     transform: translateX(calc(-250px * 7));
   }
@@ -78,20 +120,21 @@
     width: 100px;
   }
 
-  .slide-track {
-    width: calc(200px * 14);
-  }
-
   .slide {
     height: 80px;
     width: 200px;
+  }
+
+  .carrossel-loading,
+  .carrossel-empty {
+    height: 80px;
+    font-size: 0.75rem;
   }
 
   @keyframes scroll {
     0% {
       transform: translateX(0);
     }
-
     100% {
       transform: translateX(calc(-200px * 7));
     }

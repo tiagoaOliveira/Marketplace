@@ -26,14 +26,6 @@ CREATE INDEX idx_product_listings_store_id ON product_listings(store_id);
 CREATE INDEX idx_product_listings_active ON product_listings(is_active);
 
 -- RLS
-
-CREATE POLICY products_public ON products
-  FOR SELECT USING (true);
-
-CREATE POLICY products_insert ON products
-  FOR INSERT TO authenticated
-  WITH CHECK (auth_user_id() IS NOT NULL);
-  
 DROP POLICY IF EXISTS listings_select ON product_listings;
 
 CREATE POLICY listings_select ON product_listings
@@ -60,3 +52,4 @@ CREATE POLICY listings_update ON product_listings
 CREATE POLICY listings_delete ON product_listings
   FOR DELETE TO authenticated
   USING (is_store_owner(store_id));
+

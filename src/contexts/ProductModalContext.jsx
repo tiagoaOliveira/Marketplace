@@ -1,6 +1,7 @@
-// ProductModalContext.jsx - ARQUIVO COMPLETO
 import { createContext, useContext, useState, useEffect, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
+import { cartService } from '../lib/services';
+import { auth } from '../lib/supabase';
 
 // ============ CONTEXTO ============
 const ProductModalContext = createContext();
@@ -10,13 +11,154 @@ export const ProductModalProvider = ({ children }) => {
   const [modalAberto, setModalAberto] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [modalOptions, setModalOptions] = useState({});
+  
+  const [user, setUser] = useState(null);
+  const [quantidades, setQuantidades] = useState({});
+  const [cartId, setCartId] = useState(null);
+  const [recarregando, setRecarregando] = useState(false);
 
   useEffect(() => {
-    document.body.style.overflow = modalAberto ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [modalAberto]);
+    const initialize = async () => {
+      try {
+        const currentUser = await auth.getUser();
+        setUser(currentUser);
+        
+        if (currentUser) {
+          await carregarQuantidadesCarrinho(currentUser.id);
+        }
+      } catch (error) {
+        console.error('Erro ao inicializar contexto:', error);
+      }
+    };
+    
+    initialize();
+  }, []);
+
+
+
+  const carregarQuantidadesCarrinho = useCallback(async (userId) => {
+    if (recarregando) return;
+    
+    try {
+      setRecarregando(true);
+      const { data: cart, error } = await cartService.getActiveCart(userId);
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao carregar carrinho:', error);
+        return;
+      }
+      
+      if (cart) {
+        setCartId(cart.id);
+        
+        if (cart.cart_items) {
+          const qtds = {};
+          cart.cart_items.forEach(item => {
+            qtds[item.product_listing_id] = item.quantity;
+          });
+          setQuantidades(qtds);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar quantidades:', error);
+    } finally {
+      setRecarregando(false);
+    }
+  }, [recarregando]);
+
+  const recarregarCarrinho = useCallback(async () => {
+    if (user) {
+      await carregarQuantidadesCarrinho(user.id);
+    }
+  }, [user, carregarQuantidadesCarrinho]);
+
+  const adicionarAoCarrinho = useCallback(async (produto) => {
+    if (!user) {
+      alert('Faça login para adicionar produtos ao carrinho');
+      return false;
+    }
+
+    try {
+      let currentCartId = cartId;
+      
+      if (!currentCartId) {
+        const { data: newCart, error: cartError } = await cartService.createCart(user.id);
+        if (cartError) throw cartError;
+        currentCartId = newCart[0].id;
+        setCartId(currentCartId);
+      }
+
+      const listingId = produto.productListingId || produto.id;
+      const price = parseFloat(produto.preco || produto.price || 0);
+
+      const quantidadeAtual = quantidades[listingId] || 0;
+      
+      if (quantidadeAtual > 0) {
+        const { data: cart } = await cartService.getActiveCart(user.id);
+        const item = cart?.cart_items?.find(i => i.product_listing_id === listingId);
+        
+        if (item) {
+          const { error } = await cartService.updateCartItem(item.id, item.quantity + 1);
+          if (error) throw error;
+        }
+      } else {
+        const { error } = await cartService.addToCart(currentCartId, listingId, 1, price);
+        if (error) throw error;
+      }
+
+      setQuantidades(prev => ({
+        ...prev,
+        [listingId]: quantidadeAtual + 1
+      }));
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao adicionar ao carrinho:', error);
+      alert('Erro ao adicionar produto. Tente novamente.');
+      await recarregarCarrinho();
+      return false;
+    }
+  }, [user, cartId, quantidades, recarregarCarrinho]);
+
+  const removerDoCarrinho = useCallback(async (produto) => {
+    if (!user) return false;
+
+    try {
+      const { data: cart, error: cartError } = await cartService.getActiveCart(user.id);
+      if (cartError) throw cartError;
+      if (!cart?.cart_items) return false;
+
+      const listingId = produto.productListingId || produto.id;
+      const item = cart.cart_items.find(i => i.product_listing_id === listingId);
+      
+      if (!item) return false;
+
+      const novaQuantidade = item.quantity - 1;
+      const { error } = await cartService.updateCartItem(item.id, novaQuantidade);
+      if (error) throw error;
+
+      setQuantidades(prev => ({
+        ...prev,
+        [listingId]: Math.max(0, novaQuantidade)
+      }));
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao remover do carrinho:', error);
+      await recarregarCarrinho();
+      return false;
+    }
+  }, [user, recarregarCarrinho]);
+
+  const getQuantidade = useCallback((produto) => {
+    if (!produto) return 0;
+    const listingId = produto.productListingId || produto.id;
+    return quantidades[listingId] || 0;
+  }, [quantidades]);
 
   const abrirModalProduto = useCallback((produto, options = {}) => {
+    if (!produto) return;
+
     const images = produto.images && Array.isArray(produto.images) && produto.images.length > 0
       ? produto.images
       : [produto.imagem].filter(Boolean);
@@ -27,8 +169,8 @@ export const ProductModalProvider = ({ children }) => {
       productListingId: produto.productListingId || produto.id,
       nome: produto.nome || produto.name,
       descricao: produto.descricao || produto.description,
-      preco: produto.preco || produto.precoMinimo || parseFloat(produto.price),
-      stock: produto.stock || produto.totalEstoque,
+      preco: parseFloat(produto.preco || produto.precoMinimo || produto.price || 0),
+      stock: produto.stock || produto.totalEstoque || 0,
       categoria: produto.categoria || produto.category,
       subcategoria: produto.subcategoria || produto.subcategory,
       loja: produto.loja || produto.storeName || produto.listings?.[0]?.stores?.name,
@@ -53,13 +195,22 @@ export const ProductModalProvider = ({ children }) => {
       abrirModalProduto, 
       fecharModal,
       modalAberto, 
-      produtoSelecionado
+      produtoSelecionado,
+      adicionarAoCarrinho,
+      removerDoCarrinho,
+      getQuantidade,
+      recarregarCarrinho,
+      quantidades,
+      user
     }}>
       {children}
       {modalAberto && produtoSelecionado && (
         <ProductModalComponent
           produto={produtoSelecionado}
           onClose={fecharModal}
+          onAdicionar={adicionarAoCarrinho}
+          onRemover={removerDoCarrinho}
+          quantidade={getQuantidade(produtoSelecionado)}
           {...modalOptions}
         />
       )}
@@ -79,12 +230,15 @@ export const useProductModalContext = () => {
 // ============ COMPONENTE DO MODAL ============
 const ProductModalComponent = memo(({ 
   produto, 
-  onClose, 
-  onStoreClick, 
-  showControls = false, 
-  renderControls 
+  onClose,
+  onAdicionar,
+  onRemover,
+  quantidade,
+  onStoreClick,
+  showControls = true
 }) => {
   const [imagemAtual, setImagemAtual] = useState(0);
+  const [processando, setProcessando] = useState(false);
 
   useEffect(() => {
     setImagemAtual(0);
@@ -106,6 +260,24 @@ const ProductModalComponent = memo(({
     setImagemAtual((prev) => (prev - 1 + imagens.length) % imagens.length);
   };
 
+  const handleAdicionar = async (e) => {
+    e.stopPropagation();
+    if (processando) return;
+    
+    setProcessando(true);
+    await onAdicionar(produto);
+    setProcessando(false);
+  };
+
+  const handleRemover = async (e) => {
+    e.stopPropagation();
+    if (processando) return;
+    
+    setProcessando(true);
+    await onRemover(produto);
+    setProcessando(false);
+  };
+
   const modalContent = (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content-products" onClick={(e) => e.stopPropagation()}>
@@ -118,20 +290,12 @@ const ProductModalComponent = memo(({
                 src={imagens[imagemAtual]}
                 alt={`${produto.nome} - ${imagemAtual + 1}`}
                 onError={(e) => {
-                  e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect fill="%23f0f0f0"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999">Sem imagem</text></svg>';
+                  e.target.src =
+                    'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect fill="%23f0f0f0"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999">Sem imagem</text></svg>';
                 }}
               />
             ) : (
-              <div style={{ 
-                width: '300px', 
-                height: '300px', 
-                background: '#f0f0f0', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center' 
-              }}>
-                Sem imagem
-              </div>
+              <div className="img-fallback">Sem imagem</div>
             )}
             
             {temMultiplasImagens && (
@@ -166,20 +330,19 @@ const ProductModalComponent = memo(({
 
             {produto.loja && (
               <p className="modal-loja">
-                Vendido por: <strong 
+                Vendido por: 
+                <strong 
                   onClick={() => {
                     if (onStoreClick) {
                       onStoreClick(produto.loja || produto.storeName);
                       onClose();
                     }
                   }}
-                  style={{ 
-                    cursor: onStoreClick ? 'pointer' : 'default',
-                    color: onStoreClick ? '#667eea' : 'inherit'
-                  }}
-                > 
+                  className={onStoreClick ? 'store-clickable' : ''}
+                >
                   {produto.loja || produto.storeName}
-                </strong> {onStoreClick && '(Ver mais)'}
+                </strong>
+                {onStoreClick && ' (Ver mais)'}
               </p>
             )}
 
@@ -187,14 +350,34 @@ const ProductModalComponent = memo(({
               R$ {produto.preco.toFixed(2).replace('.', ',')}
             </p>
 
-            {showControls && renderControls && (
+            {showControls && (
               <div className="modal-controles">
-                {renderControls(produto)}
+                <button
+                  className="btn-carrinho btn-remover"
+                  onClick={handleRemover}
+                  disabled={!quantidade || processando}
+                >
+                  -
+                </button>
+
+                <span className="quantidade-produto">
+                  {quantidade || 0}
+                </span>
+
+                <button
+                  className="btn-carrinho btn-adicionar"
+                  onClick={handleAdicionar}
+                  disabled={produto.stock === 0 || (quantidade >= produto.stock) || processando}
+                >
+                  +
+                </button>
               </div>
             )}
 
             {produto.stock === 0 && (
-              <p className="produto-sem-estoque">Sem estoque</p>
+              <p className="produto-sem-estoque">
+                Sem estoque
+              </p>
             )}
           </div>
         </div>

@@ -1,8 +1,9 @@
+// Carrinho.jsx - SIMPLIFICADO E SINCRONIZADO
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cartService } from '../lib/services';
 import { auth, supabase } from '../lib/supabase';
-import { useProductModalContext } from '../contexts/ProductModalContext.jsx'; // ✅ CORRETO
+import { useProductModalContext } from '../contexts/ProductModalContext.jsx';
 import './Carrinho.css';
 import { RxArrowLeft } from "react-icons/rx";
 import { FaTrash } from "react-icons/fa";
@@ -10,7 +11,9 @@ import { useSlug } from '../hooks/useSlug';
 
 const CarrinhoCompras = () => {
   const navigate = useNavigate();
-  const { abrirModalProduto } = useProductModalContext();
+  
+  // ✅ Usar contexto para tudo relacionado ao carrinho
+  const { abrirModalProduto, getQuantidade, adicionarAoCarrinho, removerDoCarrinho, recarregarCarrinho } = useProductModalContext();
   const { createSlug } = useSlug();
 
   const [itensCarrinho, setItensCarrinho] = useState([]);
@@ -23,7 +26,6 @@ const CarrinhoCompras = () => {
   const [mensagemErro, setMensagemErro] = useState('');
   const [orderId, setOrderId] = useState(null);
   const [showPerfilIncompleto, setShowPerfilIncompleto] = useState(false);
-
   const [showConfirmacao, setShowConfirmacao] = useState(false);
   const [dadosUsuario, setDadosUsuario] = useState(null);
 
@@ -66,13 +68,14 @@ const CarrinhoCompras = () => {
           nome: item.product_listings.products.name,
           descricao: item.product_listings.products.description,
           preco: parseFloat(item.product_listings.price),
-          quantidade: item.quantity,
           stock: item.product_listings.stock,
           storeName: item.product_listings.stores.name,
           storeId: item.product_listings.store_id,
-          imagem: item.product_listings.products.images?.[0]
+          imagem: item.product_listings.products.images?.[0],
+          images: item.product_listings.products.images
         }));
         setItensCarrinho(itens);
+        await recarregarCarrinho();
       }
     } catch (error) {
       console.error('Erro ao carregar carrinho:', error);
@@ -92,43 +95,22 @@ const CarrinhoCompras = () => {
       }
 
       setItensCarrinho(itens => itens.filter(item => item.id !== itemId));
+      await recarregarCarrinho();
     } catch (error) {
       console.error('Erro ao remover item:', error);
     }
   };
 
-  const alterarQuantidade = async (itemId, novaQuantidade) => {
-    try {
-      const { error } = await cartService.updateCartItem(itemId, novaQuantidade);
-      if (error) {
-        console.error('Erro ao atualizar quantidade:', error);
-        return;
-      }
-
-      if (novaQuantidade <= 0) {
-        setItensCarrinho(itens => itens.filter(item => item.id !== itemId));
-      } else {
-        setItensCarrinho(itens =>
-          itens.map(item =>
-            item.id === itemId ? { ...item, quantidade: novaQuantidade } : item
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Erro ao alterar quantidade:', error);
-    }
-  };
-
   const calcularTotal = () => {
-    return itensCarrinho.reduce((total, item) =>
-      total + (item.preco * item.quantidade), 0
-    );
+    return itensCarrinho.reduce((total, item) => {
+      const qtd = getQuantidade({ productListingId: item.productListingId });
+      return total + (item.preco * qtd);
+    }, 0);
   };
 
   const verificarPerfilCompleto = (userData) => {
     const camposObrigatorios = ['phone', 'cep', 'cidade', 'bairro', 'rua', 'numero'];
-    const camposFaltando = camposObrigatorios.filter(campo => !userData[campo]);
-    return camposFaltando.length === 0;
+    return camposObrigatorios.every(campo => userData[campo]);
   };
 
   const finalizarCompra = async () => {
@@ -156,7 +138,6 @@ const CarrinhoCompras = () => {
         return;
       }
 
-      // Armazena dados e mostra modal de confirmação
       setDadosUsuario(userData);
       setShowConfirmacao(true);
       setFinalizando(false);
@@ -178,20 +159,18 @@ const CarrinhoCompras = () => {
 
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert([
-          {
-            user_id: user.id,
-            buyer_name: dadosUsuario.fullname || user.email,
-            buyer_email: dadosUsuario.email,
-            buyer_phone: dadosUsuario.phone,
-            buyer_cep: dadosUsuario.cep,
-            buyer_rua: dadosUsuario.rua,
-            buyer_numero: dadosUsuario.numero,
-            buyer_bairro: dadosUsuario.bairro,
-            buyer_cidade: dadosUsuario.cidade,
-            total_amount: totalAmount
-          }
-        ])
+        .insert([{
+          user_id: user.id,
+          buyer_name: dadosUsuario.fullname || user.email,
+          buyer_email: dadosUsuario.email,
+          buyer_phone: dadosUsuario.phone,
+          buyer_cep: dadosUsuario.cep,
+          buyer_rua: dadosUsuario.rua,
+          buyer_numero: dadosUsuario.numero,
+          buyer_bairro: dadosUsuario.bairro,
+          buyer_cidade: dadosUsuario.cidade,
+          total_amount: totalAmount
+        }])
         .select();
 
       if (orderError) {
@@ -205,16 +184,19 @@ const CarrinhoCompras = () => {
       const orderId = order[0].id;
       setOrderId(orderId);
 
-      const orderItems = itensCarrinho.map(item => ({
-        order_id: orderId,
-        product_listing_id: item.productListingId,
-        product_name: item.nome,
-        store_id: item.storeId,
-        store_name: item.storeName,
-        price: item.preco,
-        quantity: item.quantidade,
-        subtotal: item.preco * item.quantidade
-      }));
+      const orderItems = itensCarrinho.map(item => {
+        const qtd = getQuantidade({ productListingId: item.productListingId });
+        return {
+          order_id: orderId,
+          product_listing_id: item.productListingId,
+          product_name: item.nome,
+          store_id: item.storeId,
+          store_name: item.storeName,
+          price: item.preco,
+          quantity: qtd,
+          subtotal: item.preco * qtd
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('order_items')
@@ -233,6 +215,7 @@ const CarrinhoCompras = () => {
       }
       setItensCarrinho([]);
       setModalSucesso(true);
+      await recarregarCarrinho();
 
     } catch (error) {
       console.error('Erro ao confirmar pedido:', error);
@@ -250,7 +233,18 @@ const CarrinhoCompras = () => {
 
   const handleItemClick = (e, item) => {
     if (e.target.closest('.item-controles') || e.target.closest('.btn-remover')) return;
-    abrirModalProduto(item, {
+    
+    abrirModalProduto({
+      id: item.productListingId,
+      productListingId: item.productListingId,
+      nome: item.nome,
+      preco: item.preco,
+      stock: item.stock,
+      loja: item.storeName,
+      storeId: item.storeId,
+      imagem: item.imagem,
+      images: item.images || [item.imagem]
+    }, {
       showControls: true,
       onStoreClick: irParaLoja
     });
@@ -288,9 +282,7 @@ const CarrinhoCompras = () => {
           </button>
           <h1>Carrinho de Compras</h1>
         </div>
-        <div>
-          <p>Carregando carrinho...</p>
-        </div>
+        <div><p>Carregando carrinho...</p></div>
       </div>
     );
   }
@@ -321,82 +313,50 @@ const CarrinhoCompras = () => {
         <h1>Carrinho de Compras</h1>
       </div>
 
-      {/* Modal de Perfil Incompleto */}
       {showPerfilIncompleto && (
         <div className="modal-perfil-incompleto">
           <div className="modal-perfil-content">
-            <button
-              className="modal-perfil-fechar"
-              onClick={() => setShowPerfilIncompleto(false)}
-            >
-              ×
-            </button>
+            <button className="modal-perfil-fechar" onClick={() => setShowPerfilIncompleto(false)}>×</button>
             <div className="modal-perfil-icone">⚠️</div>
             <h2>Complete seu Endereço</h2>
             <div className="seta-animada">
               <span>Clique aqui para completar</span>
               <span className="seta">👇</span>
             </div>
-            <button
-              className="btn btn-primary btn-lg"
-              onClick={irParaPerfil}
-            >
+            <button className="btn btn-primary btn-lg" onClick={irParaPerfil}>
               Completar Cadastro
             </button>
           </div>
         </div>
       )}
 
-      {/* Modal de Confirmação */}
       {showConfirmacao && dadosUsuario && (
         <div className="modal-perfil-incompleto">
-          <div className="modal-perfil-content" style={{ maxWidth: '600px' }}>
-            <button
-              className="modal-perfil-fechar"
-              onClick={() => setShowConfirmacao(false)}
-            >
-              ×
-            </button>
+          <div className="modal-perfil-content modal-confirmacao">
+            <button className="modal-perfil-fechar" onClick={() => setShowConfirmacao(false)}>×</button>
             <div className="modal-perfil-icone">📋</div>
             <h2>Confirme seus Dados</h2>
-
-            <div className="campos-faltando" style={{ textAlign: 'left' }}>
-              <div style={{ marginBottom: '1rem' }}>
-                <strong style={{ color: '#667eea' }}>Nome:</strong>
-                <p style={{ margin: '0.25rem 0 0 0', color: '#1e293b' }}>{dadosUsuario.fullname}</p>
+            <div className="campos-faltando">
+              <div className="campo-info">
+                <strong>Nome:</strong>
+                <p>{dadosUsuario.fullname}</p>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <strong style={{ color: '#667eea' }}>Telefone:</strong>
-                <p style={{ margin: '0.25rem 0 0 0', color: '#1e293b' }}>{dadosUsuario.phone}</p>
+              <div className="campo-info">
+                <strong>Telefone:</strong>
+                <p>{dadosUsuario.phone}</p>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <strong style={{ color: '#667eea' }}>Endereço:</strong>
-                <p style={{ margin: '0.25rem 0 0 0', color: '#1e293b' }}>
-                  {dadosUsuario.rua}, {dadosUsuario.numero}<br />
-                  {dadosUsuario.bairro} - {dadosUsuario.cidade}<br />
-                  CEP: {dadosUsuario.cep}
-                </p>
+              <div className="campo-info">
+                <strong>Endereço:</strong>
+                <p>{dadosUsuario.rua}, {dadosUsuario.numero}<br />
+                   {dadosUsuario.bairro} - {dadosUsuario.cidade}<br />
+                   CEP: {dadosUsuario.cep}</p>
               </div>
             </div>
-
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button
-                className="btn"
-                style={{
-                  flex: 1,
-                  background: '#94a3b8',
-                  color: 'white'
-                }}
-                onClick={() => setShowConfirmacao(false)}
-              >
+            <div className="modal-buttons">
+              <button className="btn btn-secondary" onClick={() => setShowConfirmacao(false)}>
                 Cancelar
               </button>
-              <button
-                className="btn"
-                style={{ flex: 1 }}
-                onClick={confirmarPedido}
-                disabled={finalizando}
-              >
+              <button className="btn btn-primary" onClick={confirmarPedido} disabled={finalizando}>
                 {finalizando ? 'Processando...' : 'Confirmar Pedido'}
               </button>
             </div>
@@ -419,55 +379,35 @@ const CarrinhoCompras = () => {
                   <h2 className="loja-nome2">{storeName}</h2>
                 </div>
                 <div className="loja-produtos">
-                  {items.map(item => (
-                    <div
-                      key={item.id}
-                      className="carrinho-item"
-                      onClick={(e) => handleItemClick(e, item)}
-                    >
-                      <img
-                        src={item.imagem}
-                        alt={item.nome}
-                        className="item-imagem2"
-                      />
-                      <div className="item-detalhes">
-
-                        <div className='item-detalhes-header'>
-                          <h3 className="item-nome">{item.nome}</h3>
-                          <div className='precos'>
-                            <p className="item-preco">
-                              R$ {item.preco.toFixed(2).replace('.', ',')}
-                            </p>
-                            <p className="item-preco2">(R$ {(item.preco * item.quantidade).toFixed(2).replace('.', ',')})</p>
+                  {items.map(item => {
+                    const quantidade = getQuantidade({ productListingId: item.productListingId });
+                    const produto = { id: item.productListingId, productListingId: item.productListingId, preco: item.preco, stock: item.stock };
+                    
+                    return (
+                      <div key={item.id} className="carrinho-item" onClick={(e) => handleItemClick(e, item)}>
+                        <img src={item.imagem} alt={item.nome} className="item-imagem2" />
+                        <div className="item-detalhes">
+                          <div className='item-detalhes-header'>
+                            <h3 className="item-nome">{item.nome}</h3>
+                            <div className='precos'>
+                              <p className="item-preco">R$ {item.preco.toFixed(2).replace('.', ',')}</p>
+                              <p className="item-preco2">(R$ {(item.preco * quantidade).toFixed(2).replace('.', ',')})</p>
+                            </div>
                           </div>
-                        </div>
-                        <div className="item-controles">
-                          <div className="quantidade-controles">
-                            <button
-                              className="btn-quantidade"
-                              onClick={() => alterarQuantidade(item.id, item.quantidade - 1)}
-                            >
-                              -
-                            </button>
-                            <span className="quantidade">{item.quantidade}</span>
-                            <button
-                              className="btn-quantidade"
-                              onClick={() => alterarQuantidade(item.id, item.quantidade + 1)}
-                              disabled={item.quantidade >= item.stock}
-                            >
-                              +
+                          <div className="item-controles">
+                            <div className="quantidade-controles">
+                              <button className="btn-quantidade" onClick={(e) => { e.stopPropagation(); removerDoCarrinho(produto); }}>-</button>
+                              <span className="quantidade">{quantidade}</span>
+                              <button className="btn-quantidade" onClick={(e) => { e.stopPropagation(); adicionarAoCarrinho(produto); }} disabled={quantidade >= item.stock}>+</button>
+                            </div>
+                            <button className="btn-remover" onClick={(e) => { e.stopPropagation(); removerItem(item.id); }}>
+                              <FaTrash />
                             </button>
                           </div>
-                          <button
-                            className="btn-remover"
-                            onClick={() => removerItem(item.id)}
-                          >
-                            <FaTrash />
-                          </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -488,11 +428,7 @@ const CarrinhoCompras = () => {
                 <span>Total:</span>
                 <span>R$ {calcularTotal().toFixed(2).replace('.', ',')}</span>
               </div>
-              <button
-                className="btn btn-primary btn-lg carrinho-finalizar"
-                onClick={finalizarCompra}
-                disabled={finalizando}
-              >
+              <button className="btn btn-primary btn-lg carrinho-finalizar" onClick={finalizarCompra} disabled={finalizando}>
                 {finalizando ? 'Processando...' : 'Finalizar Compra'}
               </button>
             </div>
@@ -500,63 +436,30 @@ const CarrinhoCompras = () => {
         </div>
       )}
 
-
-
-      {/* Modal de Sucesso */}
       {modalSucesso && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-8 text-center">
-            <div className="mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full">
-                <span className="text-4xl">✓</span>
-              </div>
+        <div className="modal-overlay-fixed">
+          <div className="modal-content-fixed">
+            <div className="modal-icon-success">✓</div>
+            <h2 className="modal-title">Compra Finalizada!</h2>
+            <p className="modal-text">Seu pedido foi processado com sucesso.</p>
+            <div className="modal-order-id">
+              <p className="order-label">ID do Pedido</p>
+              <p className="order-number">{orderId}</p>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">
-              Compra Finalizada!
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Seu pedido foi processado com sucesso.
-            </p>
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <p className="text-sm text-gray-500">ID do Pedido</p>
-              <p className="text-lg font-mono font-bold text-gray-900 break-all">
-                {orderId}
-              </p>
-            </div>
-            <button
-              onClick={handleFecharModalSucesso}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors"
-            >
-              Voltar
-            </button>
+            <button onClick={handleFecharModalSucesso} className="btn btn-success">Voltar</button>
           </div>
         </div>
       )}
 
-      {/* Modal de Erro */}
       {modalErro && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-8">
-            <div className="flex justify-between items-start mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Erro na Compra
-              </h2>
-              <button
-                onClick={() => setModalErro(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ×
-              </button>
+        <div className="modal-overlay-fixed">
+          <div className="modal-content-fixed">
+            <div className="modal-header-error">
+              <h2 className="modal-title">Erro na Compra</h2>
+              <button onClick={() => setModalErro(false)} className="modal-close-btn">×</button>
             </div>
-            <p className="text-gray-600 mb-6">
-              {mensagemErro}
-            </p>
-            <button
-              onClick={() => setModalErro(false)}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition-colors"
-            >
-              Fechar
-            </button>
+            <p className="modal-text">{mensagemErro}</p>
+            <button onClick={() => setModalErro(false)} className="btn btn-error">Fechar</button>
           </div>
         </div>
       )}

@@ -1,8 +1,12 @@
+// SearchSystem.jsx - SIMPLIFICADO
 import { Search, X, Loader } from 'lucide-react';
 import { useSearch } from '../hooks/useSearch';
+import { useProductModalContext } from '../contexts/ProductModalContext';
+import { listingsService } from '../lib/services';
 import './SearchSystem.css';
 
-function SearchSystem({ onProductSelect, onStoreSelect }) {
+function SearchSystem({ onStoreSelect }) {
+  const { abrirModalProduto } = useProductModalContext();
   const {
     searchTerm,
     produtos,
@@ -23,9 +27,39 @@ function SearchSystem({ onProductSelect, onStoreSelect }) {
     hasResults
   } = useSearch({ limit: 10 });
 
-  const handleProductClick = (produto) => {
+  const handleProductClick = async (produto) => {
     selectItem('produto', produto);
-    onProductSelect?.(produto);
+    
+    try {
+      const { data: listings } = await listingsService.getActiveListings();
+      const produtoListings = listings?.filter(l => l.products.id === produto.id) || [];
+      
+      if (produtoListings.length === 0) {
+        alert('Produto não disponível');
+        return;
+      }
+      
+      const listingMenorPreco = produtoListings.reduce((min, curr) => 
+        parseFloat(curr.price) < parseFloat(min.price) ? curr : min
+      );
+      
+      abrirModalProduto({
+        id: listingMenorPreco.id,
+        productListingId: listingMenorPreco.id,
+        nome: produto.name,
+        preco: parseFloat(listingMenorPreco.price),
+        stock: listingMenorPreco.stock,
+        loja: listingMenorPreco.stores.name,
+        imagem: produto.images?.[0],
+        images: produto.images || []
+      }, {
+        showControls: true,
+        onStoreClick: onStoreSelect
+      });
+      
+    } catch (err) {
+      console.error('Erro ao carregar produto:', err);
+    }
   };
 
   const handleStoreClick = (loja) => {
@@ -36,11 +70,7 @@ function SearchSystem({ onProductSelect, onStoreSelect }) {
   const onKeyDown = (e) => {
     const selected = handleKeyDown(e);
     if (selected) {
-      if (selected.type === 'produto') {
-        handleProductClick(selected.data);
-      } else {
-        handleStoreClick(selected.data);
-      }
+      selected.type === 'produto' ? handleProductClick(selected.data) : handleStoreClick(selected.data);
     }
   };
 
@@ -74,11 +104,7 @@ function SearchSystem({ onProductSelect, onStoreSelect }) {
               </div>
             )}
 
-            {error && !loading && (
-              <div className="error-state">
-                <p>{error}</p>
-              </div>
-            )}
+            {error && !loading && <div className="error-state"><p>{error}</p></div>}
 
             {!loading && !hasResults && searchTerm.trim().length >= 2 && (
               <div className="empty-state">
@@ -101,13 +127,11 @@ function SearchSystem({ onProductSelect, onStoreSelect }) {
                         >
                           <div className="result-content">
                             <span className="result-name">{p.name}</span>
-                            <div className="result-meta">
-                              {p.precoMinimo > 0 && (
-                                <span className="result-price">
-                                  R$ {p.precoMinimo.toFixed(2).replace('.', ',')}
-                                </span>
-                              )}
-                            </div>
+                            {p.precoMinimo > 0 && (
+                              <span className="result-price">
+                                R$ {p.precoMinimo.toFixed(2).replace('.', ',')}
+                              </span>
+                            )}
                           </div>
                         </li>
                       ))}
@@ -150,10 +174,7 @@ function SearchSystem({ onProductSelect, onStoreSelect }) {
                   {recentSearches.map((term, idx) => (
                     <li key={idx} className="recent-item">
                       <Search size={16} />
-                      <button
-                        onClick={() => handleSearchClick(term)}
-                        className="recent-btn"
-                      >
+                      <button onClick={() => handleSearchClick(term)} className="recent-btn">
                         {term}
                       </button>
                     </li>

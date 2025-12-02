@@ -1,7 +1,7 @@
-// PerfilLoja.jsx - CORRIGIDO
-import React, { useState, useEffect, useCallback } from 'react';
+// PerfilLoja.jsx - CORRIGIDO PARA USAR CONTEXTO
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { storesService, cartService } from '../lib/services';
+import { storesService } from '../lib/services';
 import { supabase } from '../lib/supabase';
 import { useNotification } from '../hooks/useNotification';
 import { useProductModalContext } from '../contexts/ProductModalContext.jsx';
@@ -12,13 +12,20 @@ const PerfilLoja = () => {
   const { storeSlug } = useParams();
   const navigate = useNavigate();
   const { notification, showNotification } = useNotification();
-  const { abrirModalProduto } = useProductModalContext();
+  
+  // ✅ Usar contexto
+  const { 
+    abrirModalProduto, 
+    adicionarAoCarrinho, 
+    removerDoCarrinho, 
+    getQuantidade,
+    user 
+  } = useProductModalContext();
   
   const [loja, setLoja] = useState(null);
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [quantidades, setQuantidades] = useState({});
+  const [processando, setProcessando] = useState({});
 
   useEffect(() => {
     initialize();
@@ -26,9 +33,6 @@ const PerfilLoja = () => {
 
   const initialize = async () => {
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      setUser(currentUser);
-
       const { data: stores } = await storesService.getApprovedStores();
       const lojaEncontrada = stores?.find(s => createSlug(s.name) === storeSlug);
 
@@ -42,9 +46,6 @@ const PerfilLoja = () => {
       const { data: produtosData } = await storesService.getStoreProducts(lojaEncontrada.id);
       setProdutos(produtosData || []);
 
-      if (currentUser) {
-        await carregarQuantidadesCarrinho(currentUser.id);
-      }
     } catch (error) {
       console.error('Erro ao carregar loja:', error);
     } finally {
@@ -61,116 +62,79 @@ const PerfilLoja = () => {
       .replace(/^-+|-+$/g, '');
   };
 
-  const carregarQuantidadesCarrinho = async (userId) => {
-    try {
-      const { data: cart } = await cartService.getActiveCart(userId);
-      if (cart?.cart_items) {
-        const qtds = {};
-        cart.cart_items.forEach(item => {
-          qtds[item.product_listing_id] = item.quantity;
-        });
-        setQuantidades(qtds);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar quantidades:', error);
-    }
-  };
-
-  const adicionarAoCarrinho = useCallback(async (listing) => {
+  const handleAdicionar = async (e, listing) => {
+    e.stopPropagation();
+    
     if (!user) {
       showNotification('Faça login para adicionar produtos ao carrinho', 'warning');
       return;
     }
 
-    try {
-      let { data: cart } = await cartService.getActiveCart(user.id);
+    const key = listing.id;
+    if (processando[key]) return;
 
-      if (!cart) {
-        const { data: newCart } = await cartService.createCart(user.id);
-        cart = newCart[0];
-      }
-
-      await cartService.addToCart(cart.id, listing.id, 1, listing.price);
-
-      setQuantidades(prev => ({
-        ...prev,
-        [listing.id]: (prev[listing.id] || 0) + 1
-      }));
-    } catch (error) {
-      console.error('Erro ao adicionar ao carrinho:', error);
+    setProcessando(prev => ({ ...prev, [key]: true }));
+    
+    // ✅ Passar produto com estrutura correta
+    const produto = {
+      id: listing.id,
+      productListingId: listing.id,
+      nome: listing.products.name,
+      preco: parseFloat(listing.price),
+      stock: listing.stock,
+      loja: loja.name,
+      storeId: loja.id,
+      imagem: listing.products.images?.[0],
+      images: listing.products.images || []
+    };
+    
+    const sucesso = await adicionarAoCarrinho(produto);
+    
+    setProcessando(prev => ({ ...prev, [key]: false }));
+    
+    if (sucesso) {
+      showNotification('Produto adicionado!', 'success');
     }
-  }, [user, showNotification]);
+  };
 
-  const removerDoCarrinho = useCallback(async (listing) => {
-    if (!user) return;
+  const handleRemover = async (e, listing) => {
+    e.stopPropagation();
+    
+    const key = listing.id;
+    if (processando[key]) return;
 
-    try {
-      const { data: cart } = await cartService.getActiveCart(user.id);
-      if (!cart?.cart_items) return;
-
-      const item = cart.cart_items.find(i => i.product_listing_id === listing.id);
-      if (!item) return;
-
-      await cartService.updateCartItem(item.id, item.quantity - 1);
-
-      setQuantidades(prev => ({
-        ...prev,
-        [listing.id]: Math.max(0, (prev[listing.id] || 0) - 1)
-      }));
-    } catch (error) {
-      console.error('Erro ao remover do carrinho:', error);
-    }
-  }, [user]);
+    setProcessando(prev => ({ ...prev, [key]: true }));
+    
+    const produto = {
+      id: listing.id,
+      productListingId: listing.id
+    };
+    
+    await removerDoCarrinho(produto);
+    setProcessando(prev => ({ ...prev, [key]: false }));
+  };
 
   const handleVoltar = () => {
     window.history.back();
   };
 
-  const renderControls = useCallback((produto) => {
-    // Encontra o listing correspondente
-    const listing = produtos.find(p => p.products.name === produto.nome);
-    if (!listing) return null;
-
-    return (
-      <>
-        <button
-          className="btn-carrinho"
-          onClick={(e) => {
-            e.stopPropagation();
-            removerDoCarrinho(listing);
-          }}
-          disabled={!quantidades[listing.id]}
-        >
-          -
-        </button>
-
-        <span className="quantidade-produto">
-          {quantidades[listing.id] || 0}
-        </span>
-
-        <button
-          className="btn-carrinho"
-          onClick={(e) => {
-            e.stopPropagation();
-            adicionarAoCarrinho(listing);
-          }}
-          disabled={listing.stock === 0 || (quantidades[listing.id] >= listing.stock)}
-        >
-          +
-        </button>
-      </>
-    );
-  }, [produtos, quantidades, adicionarAoCarrinho, removerDoCarrinho]);
-
-  const handleCardClick = (e, produto) => {
+  const handleCardClick = (e, listing) => {
     if (e.target.closest('.produto-controles-loja')) return;
     
+    // ✅ Passar produto com estrutura correta
     abrirModalProduto({
-      ...produto,
-      images: produto.images || [produto.imagem]
+      id: listing.id,
+      productListingId: listing.id,
+      nome: listing.products.name,
+      descricao: listing.products.description,
+      preco: parseFloat(listing.price),
+      stock: listing.stock,
+      loja: loja.name,
+      storeId: loja.id,
+      imagem: listing.products.images?.[0],
+      images: listing.products.images || []
     }, {
       showControls: true,
-      renderControls,
       onStoreClick: () => {} // Já estamos na página da loja
     });
   };
@@ -192,11 +156,14 @@ const PerfilLoja = () => {
       )}
 
       <div className="loja-header">
-        <button className="btn-voltar" onClick={handleVoltar}>
+        <div className='loja-header-1'>
+          <button className="btn-voltar" onClick={handleVoltar}>
           <RxArrowLeft />
         </button>
+        <h1 className="loja-nome">{loja.name}</h1>
+        </div>
         <div className="loja-info">
-          <h1 className="loja-nome">{loja.name}</h1>
+          
           {loja.description && (
             <p className="loja-descricao">{loja.description}</p>
           )}
@@ -216,66 +183,57 @@ const PerfilLoja = () => {
           <p className="sem-produtos">Esta loja ainda não possui produtos cadastrados.</p>
         ) : (
           <div className="produtos-grid">
-            {produtos.map(listing => (
-              <div
-                key={listing.id}
-                className="produto-card"
-                onClick={(e) => handleCardClick(e, {
-                  id: listing.id,
-                  nome: listing.products.name,
-                  descricao: listing.products.description,
-                  preco: parseFloat(listing.price),
-                  stock: listing.stock,
-                  loja: loja.name,
-                  imagem: listing.products.images?.[0],
-                  images: listing.products.images || []
-                })}
-              >
-                <img
-                  src={listing.products.images?.[0]}
-                  alt={listing.products.name}
-                  className="produto-imagem"
-                />
+            {produtos.map(listing => {
+              const quantidade = getQuantidade({ id: listing.id, productListingId: listing.id });
+              const key = listing.id;
+              const estaProcessando = processando[key];
+              
+              return (
+                <div
+                  key={listing.id}
+                  className="produto-card"
+                  onClick={(e) => handleCardClick(e, listing)}
+                >
+                  <img
+                    src={listing.products.images?.[0]}
+                    alt={listing.products.name}
+                    className="produto-imagem"
+                  />
 
-                <h3 className="produto-nome-produtos">{listing.products.name}</h3>
+                  <h3 className="produto-nome-produtos">{listing.products.name}</h3>
 
-                <p className="produto-preco">
-                  R$ {parseFloat(listing.price).toFixed(2).replace('.', ',')}
-                </p>
+                  <p className="produto-preco">
+                    R$ {parseFloat(listing.price).toFixed(2).replace('.', ',')}
+                  </p>
 
-                <div className="produto-controles-loja">
-                  <button
-                    className="btn-carrinho"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removerDoCarrinho(listing);
-                    }}
-                    disabled={!quantidades[listing.id]}
-                  >
-                    -
-                  </button>
+                  <div className="produto-controles-loja">
+                    <button
+                      className="btn-carrinho"
+                      onClick={(e) => handleRemover(e, listing)}
+                      disabled={!quantidade || estaProcessando}
+                    >
+                      -
+                    </button>
 
-                  <span className="quantidade-produto">
-                    {quantidades[listing.id] || 0}
-                  </span>
+                    <span className="quantidade-produto">
+                      {quantidade}
+                    </span>
 
-                  <button
-                    className="btn-carrinho"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      adicionarAoCarrinho(listing);
-                    }}
-                    disabled={listing.stock === 0 || (quantidades[listing.id] >= listing.stock)}
-                  >
-                    +
-                  </button>
+                    <button
+                      className="btn-carrinho"
+                      onClick={(e) => handleAdicionar(e, listing)}
+                      disabled={listing.stock === 0 || (quantidade >= listing.stock) || estaProcessando}
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {listing.stock === 0 && (
+                    <p className="produto-sem-estoque">Sem estoque</p>
+                  )}
                 </div>
-
-                {listing.stock === 0 && (
-                  <p className="produto-sem-estoque">Sem estoque</p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
