@@ -42,6 +42,9 @@ CREATE INDEX idx_order_items_store_id ON order_items(store_id);
 CREATE INDEX idx_order_items_status ON order_items(status);
 CREATE INDEX idx_order_items_store_status ON order_items(store_id, status);
 CREATE INDEX idx_order_items_status_updated_at ON order_items(status_updated_at);
+CREATE INDEX idx_order_items_order_status
+ON order_items(order_id, status);
+
 
 -- RLS
 CREATE POLICY orders_owner ON orders

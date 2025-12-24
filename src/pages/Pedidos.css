@@ -122,6 +122,7 @@
 }
 
 .visao-btn {
+    position: relative;
     flex: 1;
     padding: 1rem 1.5rem;
     border: 2px solid transparent;
@@ -350,10 +351,21 @@
 }
 
 .pedido-endereco {
+    display: flex;
+    flex-direction: column;
+    justify-Content: space-between;
+    align-Items: center;
     background: white;
     padding: 1rem 1rem 0 1rem;
     border-radius: 12px;
     border: 2px solid #f1f5f9;
+}
+
+
+.ocultar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
 }
 
 .pedido-endereco p {
@@ -479,11 +491,21 @@
     font-weight: 600;
 }
 
+.subtotal {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.subtotal span {
+    font-weight: 700;
+}
+
 .item-subtotal {
     font-weight: 800;
     color: #667eea;
     white-space: nowrap;
     font-size: 16px;
+    margin-left: 1rem;
 }
 
 .pedido-total-expandido {

@@ -16,7 +16,7 @@ const Carrossel = () => {
     try {
       // Obter usuário atual
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         setError('Usuário não autenticado');
         setLoading(false);
@@ -74,23 +74,21 @@ const Carrossel = () => {
         Lojas Próximas
       </h2>
       <div className="slider">
-        <div className="slide-track" style={{
-          width: stores.length >= 3 ? `calc(250px * ${displayStores.length})` : 'auto',
-          animation: stores.length >= 3 ? 'scroll 60s linear infinite' : 'none',
-          justifyContent: stores.length < 3 ? 'flex-start' : 'normal'
-        }}>
+        <div className="slide-track">
           {displayStores.map((store, index) => (
             <div key={`${store.id}-${index}`} className="slide">
-              <img 
-                src={store.banner_url} 
-                height="100" 
-                width="250" 
-                alt={store.name}
-                loading="lazy"
-                onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/250x100?text=Sem+Imagem';
-                }}
-              />
+              {store.banner_url ? (
+                <img
+                  src={store.banner_url}
+                  alt="Sem imagem"
+                  loading="lazy"
+                  
+                />
+              ) : null}
+              <div
+                className="slide-fallback">
+                <span>Sem Imagem</span>
+              </div>
               <div className="slide-overlay">
                 <span className="slide-store-name">{store.name}</span>
               </div>

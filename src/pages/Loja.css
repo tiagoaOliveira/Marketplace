@@ -641,11 +641,6 @@
   border: 2px solid #e2e8f0;
 }
 
-.btn-secondary:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-}
-
 .btn-sm {
   padding: 0.5rem;
   font-size: 14px;

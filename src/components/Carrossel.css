@@ -13,6 +13,18 @@
   position: relative;
   width: 960px;
   max-width: 100%;
+  color: white;
+}
+
+.slide-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 18px;
+  text-align: center;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .slider::before,
@@ -70,13 +82,11 @@
   right: 0;
   background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
   padding: 0.5rem;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.3s ease;
 }
 
-.slide:hover .slide-overlay {
-  opacity: 1;
-}
+
 
 .slide-store-name {
   color: white;
@@ -92,8 +102,8 @@
   align-items: center;
   justify-content: center;
   height: 100px;
-  color: #666;
-  font-size: 0.875rem;
+  color: white;
+  font-size: 1rem;
   padding: 1rem;
   text-align: center;
 }
@@ -128,7 +138,7 @@
   .carrossel-loading,
   .carrossel-empty {
     height: 80px;
-    font-size: 0.75rem;
+    font-size: 1rem;
   }
 
   @keyframes scroll {

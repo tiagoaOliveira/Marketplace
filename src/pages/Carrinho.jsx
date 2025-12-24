@@ -162,7 +162,6 @@ const CarrinhoCompras = () => {
         .insert([{
           user_id: user.id,
           buyer_name: dadosUsuario.fullname || user.email,
-          buyer_email: dadosUsuario.email,
           buyer_phone: dadosUsuario.phone,
           buyer_cep: dadosUsuario.cep,
           buyer_rua: dadosUsuario.rua,
@@ -352,7 +351,7 @@ const CarrinhoCompras = () => {
                    CEP: {dadosUsuario.cep}</p>
               </div>
             </div>
-            <div className="modal-buttons">
+            <div className="modal-buttons-carrinho">
               <button className="btn btn-secondary" onClick={() => setShowConfirmacao(false)}>
                 Cancelar
               </button>

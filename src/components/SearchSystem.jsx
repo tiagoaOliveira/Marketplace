@@ -1,11 +1,15 @@
-// SearchSystem.jsx - SIMPLIFICADO
+// SearchSystem.jsx - COM NAVEGAÇÃO CORRIGIDA
 import { Search, X, Loader } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useSearch } from '../hooks/useSearch';
 import { useProductModalContext } from '../contexts/ProductModalContext';
 import { listingsService } from '../lib/services';
+import { useSlug } from '../hooks/useSlug';
 import './SearchSystem.css';
 
 function SearchSystem({ onStoreSelect }) {
+  const navigate = useNavigate();
+  const { createSlug } = useSlug();
   const { abrirModalProduto } = useProductModalContext();
   const {
     searchTerm,
@@ -27,6 +31,12 @@ function SearchSystem({ onStoreSelect }) {
     hasResults
   } = useSearch({ limit: 10 });
 
+  // Função para navegar para a loja
+  const irParaLoja = (nomeLoja) => {
+    const slug = createSlug(nomeLoja);
+    navigate(`/loja/${slug}`);
+  };
+
   const handleProductClick = async (produto) => {
     selectItem('produto', produto);
     
@@ -43,6 +53,7 @@ function SearchSystem({ onStoreSelect }) {
         parseFloat(curr.price) < parseFloat(min.price) ? curr : min
       );
       
+      // ✅ CORREÇÃO: Usar irParaLoja que usa navigate
       abrirModalProduto({
         id: listingMenorPreco.id,
         productListingId: listingMenorPreco.id,
@@ -54,7 +65,7 @@ function SearchSystem({ onStoreSelect }) {
         images: produto.images || []
       }, {
         showControls: true,
-        onStoreClick: onStoreSelect
+        onStoreClick: irParaLoja // ✅ Passa a função que usa navigate
       });
       
     } catch (err) {
@@ -64,7 +75,8 @@ function SearchSystem({ onStoreSelect }) {
 
   const handleStoreClick = (loja) => {
     selectItem('loja', loja);
-    onStoreSelect?.(loja);
+    // ✅ Usar irParaLoja ao invés de onStoreSelect
+    irParaLoja(loja.name);
   };
 
   const onKeyDown = (e) => {

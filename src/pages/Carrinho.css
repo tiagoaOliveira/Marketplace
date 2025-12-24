@@ -450,9 +450,15 @@
   50% { transform: translateY(8px); }
 }
 
+.modal-buttons-carrinho {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .modal-perfil-content .btn {
   width: 100%;
-  padding: 1rem 2rem;
+  padding: 1rem 1rem;
   font-size: 16px;
   font-weight: 700;
   border: none;

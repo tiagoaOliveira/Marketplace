@@ -2,21 +2,21 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import './Pedidos.css'
-import { Eye, EyeOff } from 'lucide-react' // 1. Importar ícones Lucide
+import { Eye, EyeOff } from 'lucide-react'
 
 const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
     const navigate = useNavigate()
     const [pedidos, setPedidos] = useState([])
     const [loading, setLoading] = useState(true)
-    const [filtro, setFiltro] = useState('todos')
+    const [filtro, setFiltro] = useState('pendente')
     const [expandidos, setExpandidos] = useState({})
     const [isVendor, setIsVendor] = useState(isVendorProp || false)
     const [visao, setVisao] = useState('comprador')
     const [modalAjuda, setModalAjuda] = useState(false)
     const [modalCancelar, setModalCancelar] = useState({ aberto: false, itemId: null })
+    const [modalEntregar, setModalEntregar] = useState({ aberto: false, pedidoId: null })
     const [pedidosPendentes, setPedidosPendentes] = useState(0)
-    // 2. Novo estado para controlar a expansão do endereço
-    const [enderecoExpandido, setEnderecoExpandido] = useState({}) 
+    const [enderecoExpandido, setEnderecoExpandido] = useState({})
 
     useEffect(() => {
         if (user) {
@@ -53,11 +53,10 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
         }
     }
 
-const carregarPedidos = async () => {
+    const carregarPedidos = async () => {
         try {
             setLoading(true)
 
-            // Verificar se é vendedor
             const { data: stores } = await supabase
                 .from('stores')
                 .select('id')
@@ -66,7 +65,6 @@ const carregarPedidos = async () => {
             const ehVendedor = stores && stores.length > 0
             setIsVendor(ehVendedor)
 
-            // Usar Edge Function para carregar pedidos (mais seguro)
             const { data: result, error } = await supabase.functions.invoke('get-orders', {
                 body: { view: visao }
             })
@@ -77,8 +75,7 @@ const carregarPedidos = async () => {
             } else {
                 setPedidos(result?.data || [])
             }
-            
-            // Se é vendedor, contar pendentes para badge (mesmo na visão comprador)
+
             if (ehVendedor && visao === 'comprador') {
                 const storeIds = stores.map(s => s.id)
                 const { data: itemsPendentes } = await supabase
@@ -105,8 +102,7 @@ const carregarPedidos = async () => {
             [pedidoId]: !prev[pedidoId]
         }))
     }
-    
-    // 3. Função para alternar a expansão do endereço
+
     const toggleEnderecoExpanded = (pedidoId) => {
         setEnderecoExpandido(prev => ({
             ...prev,
@@ -120,8 +116,6 @@ const carregarPedidos = async () => {
                 return
             }
 
-            // Usando Edge Function ou um RPC se for para lógica mais complexa,
-            // mas aqui mantemos o update direto no `order_items`
             const { error } = await supabase
                 .from('order_items')
                 .update({
@@ -150,51 +144,48 @@ const carregarPedidos = async () => {
             )
 
             setModalCancelar({ aberto: false, itemId: null })
+
+            // Recarregar pedidos para atualizar status do pedido se necessário
+            await carregarPedidos()
         } catch (error) {
             console.error('Erro ao cancelar item:', error)
         }
     }
 
-    const marcarPedidoCompleto = async (pedidoId) => {
+    const marcarPedidoEntregue = async () => {
         try {
-            // Usando Edge Function ou RPC seria ideal para garantir a regra de negócio
-            const { error } = await supabase
-                .from('orders')
-                .update({ status: 'completo' })
-                .eq('id', pedidoId)
+            if (!modalEntregar.pedidoId) return
+
+            const { data, error } = await supabase.rpc(
+                'mark_order_items_delivered',
+                { p_order_id: modalEntregar.pedidoId }
+            )
 
             if (error) throw error
 
-            setPedidos(prev =>
-                prev.map(pedido =>
-                    pedido.id === pedidoId
-                        ? { ...pedido, status: 'completo' }
-                        : pedido
-                )
-            )
+            const result = data?.[0]
+
+            if (!result?.success) {
+                throw new Error(result?.message || 'Erro ao atualizar pedido')
+            }
+
+            setModalEntregar({ aberto: false, pedidoId: null })
+            await carregarPedidos()
         } catch (error) {
-            console.error('Erro ao marcar pedido como entregue:', error)
+            console.error(error)
         }
     }
 
-    const pedidosFiltrados = pedidos.filter(pedido => {
-        if (filtro === 'todos') return true
 
-        if (visao === 'vendedor') {
-            // Como vendedor, filtrar por status do pedido é menos comum,
-            // mas manteremos o filtro para a estrutura principal do pedido
-            return pedido.status === filtro 
-        } else {
-            if (filtro === 'pendente') {
-                return pedido.status === 'pendente'
-            } else if (filtro === 'completo') {
-                return pedido.status === 'completo'
-            }
-            return false
+    const pedidosFiltrados = pedidos.filter(pedido => {
+        if (filtro === 'pendente') {
+            return pedido.status === 'pendente'
+        } else if (filtro === 'completo') {
+            return pedido.status === 'completo'
         }
+        return false
     })
 
-    // 4. Função para agrupar itens por loja
     const agruparItensPorLoja = (orderItems) => {
         if (!orderItems) return {}
         return orderItems.reduce((acc, item) => {
@@ -234,6 +225,10 @@ const carregarPedidos = async () => {
     const irParaLoja = (nomeLoja) => {
         const slug = createSlug(nomeLoja)
         navigate(`/loja/${slug}`)
+    }
+
+    const temItensPendentes = (pedido) => {
+        return pedido.order_items?.some(item => item.status === 'pendente') || false
     }
 
     if (loading) {
@@ -290,6 +285,35 @@ const carregarPedidos = async () => {
                 </div>
             )}
 
+            {/* Modal Confirmar Entrega */}
+            {modalEntregar.aberto && (
+                <div className="modal-overlay" onClick={() => setModalEntregar({ aberto: false, pedidoId: null })}>
+                    <div className="modal-conteudo" onClick={(e) => e.stopPropagation()}>
+                        <h3>Confirmar Entrega</h3>
+                        <p>
+                            {visao === 'vendedor'
+                                ? 'Marcar seus itens pendentes como entregues?'
+                                : ''
+                            }
+                        </p>
+                        <div className="modal-botoes">
+                            <button
+                                className="btn-modal btn-modal-fechar"
+                                onClick={() => setModalEntregar({ aberto: false, pedidoId: null })}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                className="btn-modal btn-modal-confirmar"
+                                onClick={marcarPedidoEntregue}
+                            >
+                                Confirmar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Alternador de Visão */}
             {isVendor && (
                 <div className="visao-alternador">
@@ -301,9 +325,7 @@ const carregarPedidos = async () => {
                     </button>
                     <button
                         className={`visao-btn ${visao === 'vendedor' ? 'ativo' : ''}`}
-                        onClick={() => setVisao('vendedor')}
-                        style={{ position: 'relative' }}
-                    >
+                        onClick={() => setVisao('vendedor')}>
                         🪟 Minhas Vendas
                         {pedidosPendentes > 0 && (
                             <span className="header-btn-badge3">
@@ -316,7 +338,7 @@ const carregarPedidos = async () => {
 
             {/* Filtros */}
             <div className="pedidos-filtros">
-                {['todos', 'pendente', 'completo'].map(status => (
+                {['pendente', 'completo'].map(status => (
                     <button
                         key={status}
                         className={`filtro-btn ${filtro === status ? 'ativo' : ''}`}
@@ -338,147 +360,146 @@ const carregarPedidos = async () => {
                     {pedidosFiltrados.map(pedido => {
                         const lojasAgrupadas = agruparItensPorLoja(pedido.order_items)
                         const isEnderecoExpanded = enderecoExpandido[pedido.id]
-                        
+                        const hasPendentes = temItensPendentes(pedido)
+
                         return (
-                        <div key={pedido.id} className="pedido-card">
-                            <div className="pedido-header">
-                                <button
-                                    className="pedido-expandir"
-                                    onClick={() => toggleExpanded(pedido.id)}
-                                >
-                                    <span className={`arrow ${expandidos[pedido.id] ? 'ativo' : ''}`}>▼</span>
-                                </button>
+                            <div key={pedido.id} className="pedido-card">
+                                <div className="pedido-header">
+                                    <button
+                                        className="pedido-expandir"
+                                        onClick={() => toggleExpanded(pedido.id)}
+                                    >
+                                        <span className={`arrow ${expandidos[pedido.id] ? 'ativo' : ''}`}>▼</span>
+                                    </button>
 
-                                <div className="pedido-info">
-                                    <h3>Pedido #{pedido.id.slice(0, 6)}</h3>
-                                    <p className="pedido-data">
-                                        {formatarData(pedido.created_at)}
-                                    </p>
-                                </div>
+                                    <div className="pedido-info">
+                                        <h3>Pedido #{pedido.id.slice(0, 6)}</h3>
+                                        <p className="pedido-data">
+                                            {formatarData(pedido.created_at)}
+                                        </p>
+                                    </div>
 
-                                <div className="pedido-acoes">
-                                    {visao === 'comprador' && pedido.status === 'pendente' && (
-                                        <button
-                                            className="btn-marcar-completo"
-                                            onClick={() => marcarPedidoCompleto(pedido.id)}
-                                        >
-                                            Marcar como Entregue
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Conteúdo expandido do Pedido */}
-                            {expandidos[pedido.id] && (
-                                <div className="pedido-expandido">
-                                    {/* Dados do Comprador (Endereço Expansível) */}
-                                    <div className="pedido-endereco">
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <h4>Dados do Comprador</h4>
-                                            <button 
-                                                className="pedido-expandir" 
-                                                onClick={() => toggleEnderecoExpanded(pedido.id)}
-                                                // Reutilizando o estilo de expansão
-                                                style={{ border: 'none', background: 'transparent' }} 
-                                                title={isEnderecoExpanded ? 'Ocultar Endereço' : 'Mostrar Endereço'}
+                                    <div className="pedido-acoes">
+                                        {hasPendentes && (
+                                            <button
+                                                className="btn-marcar-completo"
+                                                onClick={() => setModalEntregar({ aberto: true, pedidoId: pedido.id })}
                                             >
-                                                {isEnderecoExpanded ? <EyeOff size={20} className="arrow" /> : <Eye size={20} className="arrow" />}
+                                                Marcar como Entregue
                                             </button>
-                                        </div>
-                                        
-                                        {isEnderecoExpanded && (
-                                            <div style={{ paddingBottom: '1rem' }}>
-                                                <p><strong>Nome:</strong> {pedido.buyer_name}</p>
-                                                <p><strong>Telefone:</strong> {pedido.buyer_phone || 'Não informado'}</p>
-                                                <p>
-                                                    <strong>Endereço:</strong> {pedido.buyer_rua}, {pedido.buyer_numero}
-                                                    {pedido.buyer_bairro && ` - ${pedido.buyer_bairro}`}
-                                                    {pedido.buyer_cidade && ` - ${pedido.buyer_cidade}`}
-                                                    {pedido.buyer_cep && ` - ${pedido.buyer_cep}`}
-                                                </p>
-                                            </div>
                                         )}
                                     </div>
-
-                                    {/* Itens do Pedido Agrupados por Loja */}
-                                    <div className="pedido-itens">
-                                        
-                                        {Object.values(lojasAgrupadas).map((loja, index) => (
-                                            <div className='pedido-produtos' key={loja.store_name} >
-                                                <h5 
-                                                    onClick={() => irParaLoja(loja.store_name)}
-                                                    title={`Ir para a loja ${loja.store_name}`}
-                                                >
-                                                 {loja.store_name} ({loja.items.length} item{loja.items.length > 1 ? 's' : ''})
-                                                </h5>
-                                                
-                                                {loja.items.map(item => (
-                                                    <div key={item.id} className="item-expandido">
-                                                        <div className='item-top'>
-                                                            {item.product_listings?.products?.images?.[0] && (
-                                                                <img
-                                                                    src={item.product_listings.products.images[0]}
-                                                                    alt={item.product_name}
-                                                                    className="item-imagem"
-                                                                />
-                                                            )}
-                                                            <span className="item-nome">{item.product_name}</span>
-                                                        </div>
-
-                                                        <div className="item-info">
-                                                            <div className="item-status-container">
-                                                                <span
-                                                                    className={`item-status item-status-${item.status}`}
-                                                                >
-                                                                    {item.status.toUpperCase()}
-                                                                </span>
-                                                                {item.status_updated_at && (
-                                                                    <span className="item-status-data">
-                                                                        {new Date(item.status_updated_at).toLocaleDateString('pt-BR')}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <div className="item-dados">
-                                                            <span>{item.quantity}x</span>
-                                                            <span>R$ {parseFloat(item.price).toFixed(2).replace('.', ',')}</span>
-                                                            <span className="item-subtotal">
-                                                                R$ {parseFloat(item.subtotal).toFixed(2).replace('.', ',')}
-                                                            </span>
-                                                        </div>
-                                                        {visao === 'vendedor' && item.status === 'pendente' && (
-                                                            <button
-                                                                className="btn-status-cancelado"
-                                                                onClick={() => setModalCancelar({ aberto: true, itemId: item.id })}
-                                                            >
-                                                                ✕ Cancelar
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                ))}
-
-                                                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9' }}>
-                                                    <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '15px' }}>
-                                                        Subtotal:
-                                                    </span>
-                                                    <span className="item-subtotal" style={{ marginLeft: '1rem' }}>
-                                                        R$ {loja.total.toFixed(2).replace('.', ',')}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    
-                                    <div className="pedido-total-expandido">
-                                        <span>Total do Pedido:</span>
-                                        <span>
-                                            R$ {pedido.order_items?.reduce((sum, item) => sum + parseFloat(item.subtotal), 0).toFixed(2).replace('.', ',')}
-                                        </span>
-                                    </div>
                                 </div>
-                            )}
-                        </div>
-                    )})}
+
+                                {/* Conteúdo expandido do Pedido */}
+                                {expandidos[pedido.id] && (
+                                    <div className="pedido-expandido">
+                                        {/* Dados do Comprador (Endereço Expansível) */}
+                                        <div className="pedido-endereco">
+                                            <div className='ocultar'>
+                                                <h4>Dados do Comprador</h4>
+                                                <button
+                                                    className="pedido-expandir"
+                                                    onClick={() => toggleEnderecoExpanded(pedido.id)}
+                                                    title={isEnderecoExpanded ? 'Ocultar Endereço' : 'Mostrar Endereço'}
+                                                >
+                                                    {isEnderecoExpanded ? <EyeOff size={20} className="arrow" /> : <Eye size={20} className="arrow" />}
+                                                </button>
+                                            </div>
+
+                                            {isEnderecoExpanded && (
+                                                <div>
+                                                    <p><strong>Nome:</strong> {pedido.buyer_name}</p>
+                                                    <p><strong>Telefone:</strong> {pedido.buyer_phone || 'Não informado'}</p>
+                                                    <p>
+                                                        <strong>Endereço:</strong> {pedido.buyer_rua}, {pedido.buyer_numero}
+                                                        {pedido.buyer_bairro && ` - ${pedido.buyer_bairro}`}
+                                                        {pedido.buyer_cidade && ` - ${pedido.buyer_cidade}`}
+                                                        {pedido.buyer_cep && ` - ${pedido.buyer_cep}`}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Itens do Pedido Agrupados por Loja */}
+                                        <div className="pedido-itens">
+                                            {Object.values(lojasAgrupadas).map((loja, index) => (
+                                                <div className='pedido-produtos' key={loja.store_name} >
+                                                    <h5
+                                                        onClick={() => irParaLoja(loja.store_name)}
+                                                        title={`Ir para a loja ${loja.store_name}`}
+                                                    >
+                                                        {loja.store_name} ({loja.items.length} item{loja.items.length > 1 ? 's' : ''})
+                                                    </h5>
+
+                                                    {loja.items.map(item => (
+                                                        <div key={item.id} className="item-expandido">
+                                                            <div className='item-top'>
+                                                                {item.product_listings?.products?.images?.[0] && (
+                                                                    <img
+                                                                        src={item.product_listings.products.images[0]}
+                                                                        alt={item.product_name}
+                                                                        className="item-imagem"
+                                                                    />
+                                                                )}
+                                                                <span className="item-nome">{item.product_name}</span>
+                                                            </div>
+
+                                                            <div className="item-info">
+                                                                <div className="item-status-container">
+                                                                    <span
+                                                                        className={`item-status item-status-${item.status}`}
+                                                                    >
+                                                                        {item.status.toUpperCase()}
+                                                                    </span>
+                                                                    {item.status_updated_at && (
+                                                                        <span className="item-status-data">
+                                                                            {new Date(item.status_updated_at).toLocaleDateString('pt-BR')}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="item-dados">
+                                                                <span>{item.quantity}x</span>
+                                                                <span>R$ {parseFloat(item.price).toFixed(2).replace('.', ',')}</span>
+                                                                <span className="item-subtotal">
+                                                                    R$ {parseFloat(item.subtotal).toFixed(2).replace('.', ',')}
+                                                                </span>
+                                                            </div>
+                                                            {visao === 'vendedor' && item.status === 'pendente' && (
+                                                                <button
+                                                                    className="btn-status-cancelado"
+                                                                    onClick={() => setModalCancelar({ aberto: true, itemId: item.id })}
+                                                                >
+                                                                    ✕ Cancelar
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+
+                                                    <div className='subtotal'>
+                                                        <span>
+                                                            Subtotal:
+                                                        </span>
+                                                        <span className="item-subtotal">
+                                                            R$ {loja.total.toFixed(2).replace('.', ',')}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="pedido-total-expandido">
+                                            <span>Total do Pedido:</span>
+                                            <span>
+                                                R$ {pedido.order_items?.reduce((sum, item) => sum + parseFloat(item.subtotal), 0).toFixed(2).replace('.', ',')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    })}
                 </div>
             )}
         </div>

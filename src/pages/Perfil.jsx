@@ -1,4 +1,3 @@
-// src/pages/Perfil.jsx
 import React, { useState, useEffect } from 'react'
 import { geoService } from '../lib/services';
 import { useAuth } from '../contexts/AuthContext'
@@ -69,6 +68,39 @@ const PerfilUsuario = () => {
     }
   }
 
+  const buscarEnderecoPorCEP = async (cep) => {
+  const cepLimpo = cep.replace(/\D/g, '');
+  
+  if (cepLimpo.length !== 8) return;
+  
+  try {
+    const resultado = await geoService.getCoordinatesFromCEP(cepLimpo);
+    
+    if (!resultado) {
+      setFormErrors(prev => ({ ...prev, cep: 'CEP não encontrado' }));
+      return;
+    }
+    
+    // Preenche os campos automaticamente
+    setFormData(prev => ({
+      ...prev,
+      cidade: resultado.address?.city || prev.cidade,
+      bairro: resultado.address?.neighborhood || prev.bairro,
+      rua: resultado.address?.street || prev.rua
+    }));
+    
+    // Remove erro de CEP
+    setFormErrors(prev => {
+      const { cep, ...rest } = prev;
+      return rest;
+    });
+    
+  } catch (error) {
+    console.error('Erro ao buscar CEP:', error);
+    setFormErrors(prev => ({ ...prev, cep: 'Erro ao buscar CEP' }));
+  }
+};
+
   const carregarPedidosPendentes = async (storeIds) => {
     try {
       const { data, error } = await supabase.functions.invoke('get-pending-orders-count', {
@@ -116,26 +148,32 @@ const PerfilUsuario = () => {
   }
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
+  const { name, value } = e.target;
 
-    const newValue = name === 'phone'
-      ? formatPhone(value)
-      : name === 'cep'
-        ? formatCEP(value)
-        : value
+  const newValue = name === 'phone'
+    ? formatPhone(value)
+    : name === 'cep'
+      ? formatCEP(value)
+      : value;
 
-    setFormData(prev => ({
-      ...prev,
-      [name]: newValue
-    }))
+  setFormData(prev => ({
+    ...prev,
+    [name]: newValue
+  }));
 
-    if (formErrors[name]) {
-      setFormErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }))
-    }
+  // Auto-completar endereço quando CEP estiver completo
+  if (name === 'cep' && newValue.replace(/\D/g, '').length === 8) {
+    buscarEnderecoPorCEP(newValue);
   }
+
+  if (formErrors[name]) {
+    setFormErrors(prev => ({
+      ...prev,
+      [name]: ''
+    }));
+  }
+};
+
   const validateForm = (type) => {
     const errors = {}
 
