@@ -367,7 +367,6 @@ const CarrinhoCompras = () => {
         <div className="carrinho-vazio">
           <div className="carrinho-vazio-icone">🛒</div>
           <h2>Seu carrinho está vazio</h2>
-          <p>Adicione alguns produtos ao seu carrinho!</p>
         </div>
       ) : (
         <div className="carrinho-conteudo">
@@ -440,12 +439,7 @@ const CarrinhoCompras = () => {
           <div className="modal-content-fixed">
             <div className="modal-icon-success">✓</div>
             <h2 className="modal-title">Compra Finalizada!</h2>
-            <p className="modal-text">Seu pedido foi processado com sucesso.</p>
-            <div className="modal-order-id">
-              <p className="order-label">ID do Pedido</p>
-              <p className="order-number">{orderId}</p>
-            </div>
-            <button onClick={handleFecharModalSucesso} className="btn btn-success">Voltar</button>
+            <p className="modal-text">Acompanhe seu pedido em "Meus pedidos".</p>
           </div>
         </div>
       )}

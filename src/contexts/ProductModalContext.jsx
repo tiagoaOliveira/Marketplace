@@ -3,10 +3,8 @@ import { createPortal } from 'react-dom';
 import { cartService } from '../lib/services';
 import { auth } from '../lib/supabase';
 
-// ============ CONTEXTO ============
 const ProductModalContext = createContext();
 
-// ============ PROVIDER ============
 export const ProductModalProvider = ({ children }) => {
   const [modalAberto, setModalAberto] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
@@ -327,10 +325,11 @@ const ProductModalComponent = memo(({
 
           <div className="modal-info">
             <h2 className="modal-titulo">{produto.nome}</h2>
+            <p>{produto.descricao}</p>
 
             {produto.loja && (
               <p className="modal-loja">
-                Vendido por: 
+                Vendido por:  
                 <strong 
                   onClick={() => {
                     if (onStoreClick) {
@@ -342,7 +341,6 @@ const ProductModalComponent = memo(({
                 >
                   {produto.loja || produto.storeName}
                 </strong>
-                {onStoreClick && ' (Ver mais)'}
               </p>
             )}
 

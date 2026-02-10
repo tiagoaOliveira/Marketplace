@@ -12,16 +12,16 @@ const PerfilLoja = () => {
   const { storeSlug } = useParams();
   const navigate = useNavigate();
   const { notification, showNotification } = useNotification();
-  
+
   // ✅ Usar contexto
-  const { 
-    abrirModalProduto, 
-    adicionarAoCarrinho, 
-    removerDoCarrinho, 
+  const {
+    abrirModalProduto,
+    adicionarAoCarrinho,
+    removerDoCarrinho,
     getQuantidade,
-    user 
+    user
   } = useProductModalContext();
-  
+
   const [loja, setLoja] = useState(null);
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +64,7 @@ const PerfilLoja = () => {
 
   const handleAdicionar = async (e, listing) => {
     e.stopPropagation();
-    
+
     if (!user) {
       showNotification('Faça login para adicionar produtos ao carrinho', 'warning');
       return;
@@ -74,7 +74,7 @@ const PerfilLoja = () => {
     if (processando[key]) return;
 
     setProcessando(prev => ({ ...prev, [key]: true }));
-    
+
     // ✅ Passar produto com estrutura correta
     const produto = {
       id: listing.id,
@@ -87,11 +87,11 @@ const PerfilLoja = () => {
       imagem: listing.products.images?.[0],
       images: listing.products.images || []
     };
-    
+
     const sucesso = await adicionarAoCarrinho(produto);
-    
+
     setProcessando(prev => ({ ...prev, [key]: false }));
-    
+
     if (sucesso) {
       showNotification('Produto adicionado!', 'success');
     }
@@ -99,17 +99,17 @@ const PerfilLoja = () => {
 
   const handleRemover = async (e, listing) => {
     e.stopPropagation();
-    
+
     const key = listing.id;
     if (processando[key]) return;
 
     setProcessando(prev => ({ ...prev, [key]: true }));
-    
+
     const produto = {
       id: listing.id,
       productListingId: listing.id
     };
-    
+
     await removerDoCarrinho(produto);
     setProcessando(prev => ({ ...prev, [key]: false }));
   };
@@ -120,7 +120,7 @@ const PerfilLoja = () => {
 
   const handleCardClick = (e, listing) => {
     if (e.target.closest('.produto-controles-loja')) return;
-    
+
     // ✅ Passar produto com estrutura correta
     abrirModalProduto({
       id: listing.id,
@@ -135,7 +135,7 @@ const PerfilLoja = () => {
       images: listing.products.images || []
     }, {
       showControls: true,
-      onStoreClick: () => {} // Já estamos na página da loja
+      onStoreClick: () => { } // Já estamos na página da loja
     });
   };
 
@@ -156,26 +156,15 @@ const PerfilLoja = () => {
       )}
 
       <div className="loja-header">
-        <div className='loja-header-1'>
-          <button className="btn-voltar" onClick={handleVoltar}>
+        {loja.banner_url && (
+          <div className="loja-banner-bg">
+            <img src={loja.banner_url} alt={loja.name} />
+          </div>
+        )}
+
+        <button className="btn-voltar" onClick={handleVoltar}>
           <RxArrowLeft />
         </button>
-        <h1 className="loja-nome">{loja.name}</h1>
-        </div>
-        <div className="loja-info">
-          
-          {loja.description && (
-            <p className="loja-descricao">{loja.description}</p>
-          )}
-          <div className="loja-detalhes">
-            {loja.email && (
-              <span className="loja-contato">📧 {loja.email}</span>
-            )}
-            {loja.phone && (
-              <span className="loja-contato">📞 {loja.phone}</span>
-            )}
-          </div>
-        </div>
       </div>
 
       <div className="loja-produtos-section">
@@ -187,7 +176,7 @@ const PerfilLoja = () => {
               const quantidade = getQuantidade({ id: listing.id, productListingId: listing.id });
               const key = listing.id;
               const estaProcessando = processando[key];
-              
+
               return (
                 <div
                   key={listing.id}

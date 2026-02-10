@@ -14,7 +14,8 @@ const StoreProductsSection = ({
   onEditProduct,
   onDeleteProduct,
   confirmingDelete,
-  setConfirmingDelete
+  setConfirmingDelete,
+  onEditOwnProduct // Nova prop para edição completa de produtos próprios
 }) => {
   return (
     <div className="store-products-container">
@@ -73,10 +74,21 @@ const StoreProductsSection = ({
                     ? listing.price.toFixed(2) 
                     : '—';
 
+                  // Verificar se é produto próprio da loja
+                  const isOwnProduct = listing.products?.store_id === store.id;
+
                   return (
-                    <div key={listing.id} className="product-item">
+                    <div 
+                      key={listing.id} 
+                      className={`product-item ${isOwnProduct ? 'own-product' : ''}`}
+                    >
                       <div className="product-info">
-                        <h5>{productName}</h5>
+                        <h5>
+                          {productName}
+                          {isOwnProduct && (
+                            <span className="own-product-badge">Seu Produto</span>
+                          )}
+                        </h5>
                         {productCategory && (
                           <p className="product-category">{productCategory}</p>
                         )}
@@ -95,7 +107,18 @@ const StoreProductsSection = ({
                         <div className="product-actions">
                           <button 
                             className="btn-edit-product" 
-                            onClick={() => onEditProduct(listing)}
+                            onClick={() => {
+                              if (isOwnProduct && onEditOwnProduct) {
+                                // Edição completa (nome, descrição, imagens, preço, estoque)
+                                onEditOwnProduct(listing);
+                              } else {
+                                // Edição limitada (apenas preço e estoque)
+                                onEditProduct(listing);
+                              }
+                            }}
+                            title={isOwnProduct 
+                              ? 'Editar produto completo' 
+                              : 'Editar apenas preço e estoque'}
                           >
                             Editar
                           </button>

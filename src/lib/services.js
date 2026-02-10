@@ -414,7 +414,6 @@ export const storesService = {
     return { data, error: error?.message }
   },
 
-  // Buscar produtos de uma loja
   async getStoreProducts(storeId) {
     const { data, error } = await supabase
       .from('product_listings')

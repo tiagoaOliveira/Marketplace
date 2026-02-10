@@ -1,6 +1,5 @@
-// CatalogSection.jsx
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
 
 const CatalogSection = ({
   store,
@@ -12,17 +11,18 @@ const CatalogSection = ({
   onSearchChange,
   onClearSearch,
   storeProducts,
-  onAddProduct
+  onAddProduct,
+  onCreateProduct // Nova prop
 }) => {
   return (
     <div className="store-products-container">
-      <div 
-        className="store-products-header catalog-header" 
+      <div
+        className="store-products-header catalog-header"
         onClick={() => onToggle(store)}
       >
         <h3 className="store-products-title">Adicionar Produtos</h3>
-        <button 
-          className={`products-expand-btn ${expanded ? 'expanded' : ''}`} 
+        <button
+          className={`products-expand-btn ${expanded ? 'expanded' : ''}`}
           type="button"
         >
           ▼
@@ -31,18 +31,30 @@ const CatalogSection = ({
 
       {expanded && (
         <div className="store-products-content">
+          {/* Botão criar produto */}
+          <button
+            className="btn-create-own-product"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCreateProduct();
+            }}
+          >
+            <Plus size={20} />
+            Criar Meu Próprio Produto
+          </button>
+
           <div className="search-container">
             <div className="search-input-wrapper">
               <input
                 type="text"
                 className="search-input"
-                placeholder="Buscar produtos no catálogo..."
+                placeholder="Buscar produtos existentes..."
                 value={searchTerm}
                 onChange={(e) => onSearchChange(e.target.value)}
               />
               {searchTerm && (
-                <button 
-                  className="clear-btn" 
+                <button
+                  className="clear-btn"
                   onClick={onClearSearch}
                 >
                   <X size={18} />
@@ -51,6 +63,7 @@ const CatalogSection = ({
             </div>
           </div>
 
+          {/* Resto do código permanece igual */}
           <div className="store-products">
             {loading ? (
               <p className="loading-products">Carregando catálogo...</p>
@@ -64,22 +77,25 @@ const CatalogSection = ({
                 <div className="products-list">
                   {catalogProducts.map(product => {
                     const existingListing = storeProducts.find(
-                      listing => (listing.products?.id === product.id || 
-                                 listing.product_id === product.id)
+                      listing => (listing.products?.id === product.id ||
+                        listing.product_id === product.id)
                     );
-                    const alreadyAdded = existingListing && 
-                                        existingListing.is_active !== false;
-                    const canReactivate = existingListing && 
-                                         existingListing.is_active === false;
+                    const alreadyAdded = existingListing &&
+                      existingListing.is_active !== false;
+                    const canReactivate = existingListing &&
+                      existingListing.is_active === false;
 
                     return (
-                      <div 
-                        key={product.id} 
+                      <div
+                        key={product.id}
                         className={`product-item ${canReactivate ? 'inactive-product' : ''}`}
                       >
                         <div className="product-info">
                           <h5>
                             {product.name}
+                            {product.store_id && (
+                              <span className="own-product-badge">Seu Produto</span>
+                            )}
                             {canReactivate && (
                               <span className="inactive-badge">⚠️ Desativado</span>
                             )}
@@ -92,7 +108,7 @@ const CatalogSection = ({
                           )}
                           {canReactivate && (
                             <p className="reactivate-hint">
-                              Este produto foi removido da sua loja. Clique em "Reativar" 
+                              Este produto foi removido da sua loja. Clique em "Reativar"
                               para adicioná-lo novamente.
                             </p>
                           )}
@@ -101,15 +117,15 @@ const CatalogSection = ({
                           {alreadyAdded ? (
                             <span className="product-status">✓ Ativo na loja</span>
                           ) : canReactivate ? (
-                            <button 
-                              className="btn-reactivate-product" 
+                            <button
+                              className="btn-reactivate-product"
                               onClick={() => onAddProduct(product)}
                             >
                               🔄 Reativar Produto
                             </button>
                           ) : (
-                            <button 
-                              className="btn-add-product" 
+                            <button
+                              className="btn-add-product"
                               onClick={() => onAddProduct(product)}
                             >
                               + Adicionar

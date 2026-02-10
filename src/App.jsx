@@ -29,7 +29,7 @@ function App() {
   return (
     <ProductModalProvider>
       <AuthProvider>
-        <BrowserRouter basename="/Marketplace">
+        <BrowserRouter basename="/">
           <AppRoutes />
         </BrowserRouter>
       </AuthProvider>

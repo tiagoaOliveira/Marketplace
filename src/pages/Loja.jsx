@@ -13,6 +13,8 @@ import StoreForm from './StoreForm';
 import StoreCard from '../components/StoreCard';
 import ProductModal from '../components/ProductModal';
 import AddProductModal from '../components/AddProductModal';
+import CreateProductModal from '../components/CreateProductModal';
+import EditOwnProductModal from '../components/EditOwnProductModal'; // NOVO
 import StoreProductsSection from '../components/StoreProductsSection';
 import CatalogSection from '../components/CatalogSelection';
 import './Loja.css';
@@ -39,6 +41,15 @@ const Stores = () => {
   // Estados de modais
   const [editingProduct, setEditingProduct] = useState(null);
   const [addingProduct, setAddingProduct] = useState(null);
+  const [createProductModal, setCreateProductModal] = useState({ 
+    isOpen: false,
+    store: null
+  });
+  const [editOwnProductModal, setEditOwnProductModal] = useState({ 
+    isOpen: false,
+    listing: null,
+    store: null
+  });
 
   // Hooks de busca
   const searchProductsInStore = useSearch({ autoSearch: false, limit: 50 });
@@ -88,7 +99,7 @@ const Stores = () => {
     try {
       const { data, error } = await supabase
         .from('product_listings')
-        .select(`*, products (id, name, description, category, images)`)
+        .select(`*, products (id, name, description, category, subcategory, images, store_id)`)
         .eq('store_id', storeId);
 
       if (!error) {
@@ -215,7 +226,6 @@ const Stores = () => {
     let hasChanges = false;
     let addressChanged = false;
 
-    // Verificar mudanças nos campos
     Object.keys(formData).forEach(key => {
       if (key === 'address') {
         const oldAddress = editingStore.address || {};
@@ -239,18 +249,21 @@ const Stores = () => {
       return;
     }
 
-    if (addressChanged && formData.address.zip_code) {
-      await geoService.updateStoreLocation(editingStore.id, formData.address);
+    if (addressChanged && updates.address?.zip_code) {
+      const coords = await geoService.getCoordinatesFromZipCode(updates.address.zip_code);
+      if (coords) {
+        await supabase.from('stores').update({
+          location: `POINT(${coords.lng} ${coords.lat})`
+        }).eq('id', editingStore.id);
+      }
     }
+
+    showNotification('Loja atualizada com sucesso!', 'success');
   };
 
   const createStore = async () => {
-    const storeData = {
-      ...formData,
-      user_id: user.id,
-      address: formData.address.street ? formData.address : null,
-      business_hours: formData.business_hours
-    };
+    const storeData = { ...formData, user_id: user.id, is_approved: false };
+    if (!storeData.address.street) storeData.address = null;
 
     const result = await storesService.createStore(storeData);
     if (result.error) {
@@ -258,10 +271,29 @@ const Stores = () => {
       return;
     }
 
-    if (result.data && formData.address.zip_code) {
-      const storeId = result.data[0]?.id;
-      await geoService.updateStoreLocation(storeId, formData.address);
+    if (formData.address?.zip_code) {
+      const coords = await geoService.getCoordinatesFromZipCode(formData.address.zip_code);
+      if (coords && result.data?.[0]?.id) {
+        await supabase.from('stores').update({
+          location: `POINT(${coords.lng} ${coords.lat})`
+        }).eq('id', result.data[0].id);
+      }
     }
+
+    showNotification('Loja criada! Aguarde aprovação.', 'success');
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '', business_name: '', description: '', category: '', cnpj: '', 
+      email: '', phone: '',
+      address: { street: '', number: '', complement: '', neighborhood: '', 
+                 city: '', state: '', zip_code: '' },
+      business_hours: []
+    });
+    setFormErrors({});
+    setEditingStore(null);
+    setCreatingStore(false);
   };
 
   const handleEdit = (store) => {
@@ -274,101 +306,109 @@ const Stores = () => {
       cnpj: store.cnpj || '',
       email: store.email || '',
       phone: store.phone || '',
-      address: store.address || { 
-        street: '', number: '', complement: '', neighborhood: '', 
-        city: '', state: '', zip_code: '' 
-      },
+      address: store.address || { street: '', number: '', complement: '', 
+                                   neighborhood: '', city: '', state: '', zip_code: '' },
       business_hours: store.business_hours || []
     });
   };
 
   const handleCreateNew = () => {
     setCreatingStore(true);
-    setFormData({
-      name: '', business_name: '', description: '', category: '', 
-      cnpj: '', email: '', phone: '',
-      address: { street: '', number: '', complement: '', neighborhood: '', 
-                 city: '', state: '', zip_code: '' },
-      business_hours: []
+    resetForm();
+  };
+
+  const handleSaveBusinessHours = (hours) => {
+    setFormData(prev => ({ ...prev, business_hours: hours }));
+  };
+
+  // NOVO: Handlers do modal de criar produto
+  const handleOpenCreateProduct = (store) => {
+    setCreateProductModal({
+      isOpen: true,
+      store: store
     });
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: '', business_name: '', description: '', category: '', 
-      cnpj: '', email: '', phone: '',
-      address: { street: '', number: '', complement: '', neighborhood: '', 
-                 city: '', state: '', zip_code: '' },
-      business_hours: []
+  const handleCloseCreateProduct = () => {
+    setCreateProductModal({
+      isOpen: false,
+      store: null
     });
-    setFormErrors({});
-    setEditingStore(null);
-    setCreatingStore(false);
   };
 
-  const handleSaveBusinessHours = async (horariosAtualizados) => {
-    if (!editingStore?.id) return;
-    try {
-      const { error } = await storesService.updateStore(editingStore.id, {
-        business_hours: horariosAtualizados
-      });
-
-      if (error) {
-        showNotification('Erro ao salvar horários: ' + error, 'error');
-      } else {
-        showNotification('Horários salvos com sucesso!', 'success');
-        setStores(prev => prev.map(s =>
-          s.id === editingStore.id ? { ...s, business_hours: horariosAtualizados } : s
-        ));
-        setEditingStore(prev => ({ ...prev, business_hours: horariosAtualizados }));
-      }
-    } catch (error) {
-      console.error('Erro ao salvar horários:', error);
-      showNotification('Erro inesperado ao salvar horários', 'error');
+  const handleCreateProductSuccess = async () => {
+    if (createProductModal.store) {
+      await loadStoreProducts(createProductModal.store.id);
     }
   };
 
-  // Handlers de produtos
-  const handleDeleteProduct = async (product) => {
+  const handleOpenEditOwnProduct = (listing, store) => {
+    setEditOwnProductModal({
+      isOpen: true,
+      listing: listing,
+      store: store
+    });
+  };
+
+  const handleCloseEditOwnProduct = () => {
+    setEditOwnProductModal({
+      isOpen: false,
+      listing: null,
+      store: null
+    });
+  };
+
+  const handleEditOwnProductSuccess = async () => {
+    if (editOwnProductModal.store) {
+      await loadStoreProducts(editOwnProductModal.store.id);
+    }
+  };
+
+  const handleDeleteProduct = async (productId) => {
+    if (confirmingDelete !== productId) {
+      setConfirmingDelete(productId);
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('product_listings')
         .update({ is_active: false })
-        .eq('id', product.id)
-        .select(`*, products (id, name, description, category, images)`);
+        .eq('id', productId);
 
       if (error) {
-        showNotification('Erro ao remover produto. Tente novamente.', 'error');
+        showNotification('Erro ao remover produto.', 'error');
         return;
       }
 
-      const storeId = product.store_id || Object.keys(storeProducts).find(id =>
-        storeProducts[id].some(p => p.id === product.id)
+      const storeId = Object.keys(storeProducts).find(id => 
+        storeProducts[id].some(p => p.id === productId)
       );
 
       if (storeId) {
-        const inactiveListing = data[0];
         setStoreProducts(prev => ({
           ...prev,
-          [storeId]: prev[storeId].filter(p => p.id !== product.id),
-          [`${storeId}_all`]: [
-            ...(prev[`${storeId}_all`] || []).filter(p => p.id !== product.id),
-            inactiveListing
-          ]
+          [storeId]: prev[storeId].filter(p => p.id !== productId)
         }));
-        showNotification('Produto removido com sucesso!', 'success');
       }
+
+      showNotification('Produto removido com sucesso!', 'success');
+      setConfirmingDelete(null);
     } catch (error) {
       console.error('Erro ao remover produto:', error);
-      showNotification('Erro ao remover produto. Tente novamente.', 'error');
+      showNotification('Erro ao remover produto.', 'error');
     }
   };
 
   const handleUpdateProduct = async (productId, updateData) => {
     try {
-      const { error } = await storesService.updateProductListing(productId, updateData);
+      const { error } = await supabase
+        .from('product_listings')
+        .update(updateData)
+        .eq('id', productId);
+
       if (error) {
-        console.error('Erro ao atualizar produto:', error);
+        showNotification('Erro ao atualizar produto.', 'error');
         return false;
       }
 
@@ -404,7 +444,7 @@ const Stores = () => {
           .from('product_listings')
           .update({ ...productData, is_active: true })
           .eq('id', existingListing.id)
-          .select(`*, products (id, name, description, category, images)`);
+          .select(`*, products (id, name, description, category, subcategory, images, store_id)`);
 
         if (error) {
           showNotification('Erro ao reativar produto.', 'error');
@@ -549,6 +589,25 @@ const Stores = () => {
         />
       )}
 
+      {/* NOVO: Modal de Criar Produto */}
+      {createProductModal.isOpen && (
+        <CreateProductModal
+          store={createProductModal.store}
+          onClose={handleCloseCreateProduct}
+          onSuccess={handleCreateProductSuccess}
+        />
+      )}
+
+      {/* Modal de Editar Produto Próprio */}
+      {editOwnProductModal.isOpen && (
+        <EditOwnProductModal
+          listing={editOwnProductModal.listing}
+          store={editOwnProductModal.store}
+          onClose={handleCloseEditOwnProduct}
+          onSuccess={handleEditOwnProductSuccess}
+        />
+      )}
+
       {!editingStore && !creatingStore && (
         <div className="stores-list">
           {stores.length === 0 ? (
@@ -578,6 +637,7 @@ const Stores = () => {
                   onSearchChange={searchProductsInStore.setSearchTerm}
                   onClearSearch={searchProductsInStore.handleClear}
                   onEditProduct={setEditingProduct}
+                  onEditOwnProduct={(listing) => handleOpenEditOwnProduct(listing, store)}
                   onDeleteProduct={handleDeleteProduct}
                   confirmingDelete={confirmingDelete}
                   setConfirmingDelete={setConfirmingDelete}
@@ -594,6 +654,7 @@ const Stores = () => {
                   onClearSearch={searchCatalog.handleClear}
                   storeProducts={storeProducts[`${store.id}_all`] || []}
                   onAddProduct={(product) => setAddingProduct({ product, store })}
+                  onCreateProduct={() => handleOpenCreateProduct(store)}
                 />
               </React.Fragment>
             ))

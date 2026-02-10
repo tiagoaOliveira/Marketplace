@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { storesService } from '../lib/services';
 import { supabase } from '../lib/supabase';
+import { Link } from 'react-router-dom';
+import { useSlug } from '../hooks/useSlug';
 import './Carrossel.css';
 
 const Carrossel = () => {
+  const { createSlug } = useSlug();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,7 +26,6 @@ const Carrossel = () => {
         return;
       }
 
-      // Buscar lojas da mesma cidade
       const { data, error: storesError } = await storesService.getStoresByUserCity(user.id);
 
       if (storesError) {
@@ -70,29 +72,25 @@ const Carrossel = () => {
 
   return (
     <div>
-      <h2 className='carrossel-title'>
-        Lojas Próximas
-      </h2>
+      <h2 className='carrossel-title'>Lojas Próximas</h2>
       <div className="slider">
         <div className="slide-track">
           {displayStores.map((store, index) => (
-            <div key={`${store.id}-${index}`} className="slide">
-              {store.banner_url ? (
-                <img
-                  src={store.banner_url}
-                  alt="Sem imagem"
-                  loading="lazy"
-                  
-                />
-              ) : null}
-              <div
-                className="slide-fallback">
-                <span>Sem Imagem</span>
-              </div>
-              <div className="slide-overlay">
-                <span className="slide-store-name">{store.name}</span>
-              </div>
-            </div>
+            <Link
+              to={`/loja/${createSlug(store.name)}`}
+              key={`${store.id}-${index}`}
+              className="slide"
+            >
+              {store.banner_url && (
+                <img src={store.banner_url} alt={store.name} />
+              )}
+
+              {!store.banner_url && (
+                <div className="slide-fallback">
+                  <span>Sem Imagem</span>
+                </div>
+              )}
+            </Link>
           ))}
         </div>
       </div>
