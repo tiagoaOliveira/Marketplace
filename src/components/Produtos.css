@@ -46,7 +46,8 @@
 
 .produto-imagem {
   width: 100%;
-  max-height: 190px;
+  min-height: 180px;
+  max-height: 180px;
   object-fit: cover;
   transition: transform 0.4s ease;
   display: block;
@@ -138,7 +139,6 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.75);
   z-index: 9999;
   animation: fadeIn 0.3s ease;
 }
@@ -162,7 +162,7 @@
   right: 0;
   background: white;
   width: 100%;
-  height: 85vh;
+  height: 92vh;
   overflow-y: auto;
   box-shadow: 0 -10px 50px rgba(0, 0, 0, 0.3);
   animation: slideUpFromBottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -197,16 +197,15 @@
   width: 44px;
   height: 44px;
   border: none;
-  background: rgba(0, 0, 0, 0.1);
   border-radius: 50%;
-  font-size: 24px;
+  font-size: 2rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
   transition: all 0.3s ease;
-  color: #64748b;
+  color: black;
 }
 
 /* Navegação de imagens do modal */
@@ -298,8 +297,7 @@
 
 .modal-imagem img {
   width: 100%;
-  height: 320px;
-  object-fit: scale-down;
+  object-fit: contain;
   display: block;
 }
 
@@ -309,6 +307,7 @@
   gap: 0.25rem;
   flex: 1;
   padding: 0 1rem;
+  background-color: transparent;
 }
 
 .modal-titulo {
@@ -412,7 +411,6 @@
   .btn-carrinho {
     width: 40px;
     height: 40px;
-    font-size: 18px;
   }
 
   .quantidade-produto {

@@ -1,64 +1,52 @@
-// EditOwnProductModal.jsx
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import ImageUpload from './ImageUpload';
+import { uploadImages } from '../lib/uploadImages';
 import { supabase } from '../lib/supabase';
 import './CreateProductModal.css';
 
 const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
   const product = listing.products || listing.product;
-  
+
   const [formData, setFormData] = useState({
     name: product.name || '',
     description: product.description || '',
     category: product.category || '',
     subcategory: product.subcategory || '',
-    images: product.images || [],
     price: listing.price || '',
     stock: listing.stock || ''
   });
+  const [previews, setPreviews] = useState(product.images || []); // URLs já salvas
+  const [pendingFiles, setPendingFiles] = useState([]);            // Novos arquivos
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const categories = [
-    'Alimentos e Bebidas',
-    'Roupas e Acessórios',
-    'Eletrônicos',
-    'Casa e Decoração',
-    'Beleza e Cuidados',
-    'Esportes e Lazer',
-    'Livros e Papelaria',
-    'Outros'
+    'Alimentos e Bebidas', 'Roupas e Acessórios', 'Eletrônicos',
+    'Casa e Decoração', 'Beleza e Cuidados', 'Esportes e Lazer',
+    'Livros e Papelaria', 'Outros'
   ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!formData.name.trim()) {
-      setError('Nome do produto é obrigatório');
-      return;
-    }
 
-    if (formData.images.length === 0) {
-      setError('Adicione pelo menos uma imagem');
-      return;
-    }
-
-    if (!formData.price || parseFloat(formData.price) <= 0) {
-      setError('Preço deve ser maior que zero');
-      return;
-    }
-
-    if (!formData.stock || parseInt(formData.stock) < 0) {
-      setError('Estoque inválido');
-      return;
-    }
+    if (!formData.name.trim()) { setError('Nome do produto é obrigatório'); return; }
+    if (pendingFiles.length === 0 && previews.length === 0) { setError('Adicione pelo menos uma imagem'); return; }
+    if (!formData.price || parseFloat(formData.price) <= 0) { setError('Preço deve ser maior que zero'); return; }
+    if (formData.stock === '' || parseInt(formData.stock) < 0) { setError('Estoque inválido'); return; }
 
     setLoading(true);
     setError('');
 
     try {
-      // 1. Atualizar produto (tabela products)
+      // Faz upload dos novos arquivos apenas no submit
+      const uploadedUrls = pendingFiles.length > 0
+        ? await uploadImages(pendingFiles, store.id)
+        : [];
+
+      const allImages = [...previews, ...uploadedUrls];
+
+      // Atualiza produto (só da loja, por segurança)
       const { error: productError } = await supabase
         .from('products')
         .update({
@@ -66,14 +54,14 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
           description: formData.description,
           category: formData.category,
           subcategory: formData.subcategory,
-          images: formData.images
+          images: allImages
         })
         .eq('id', product.id)
-        .eq('store_id', store.id); // Segurança: só atualiza se for produto da loja
+        .eq('store_id', store.id);
 
       if (productError) throw productError;
 
-      // 2. Atualizar listing (preço e estoque)
+      // Atualiza preço e estoque
       const { error: listingError } = await supabase
         .from('product_listings')
         .update({
@@ -99,16 +87,15 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
       <div className="modal-content create-product-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Editar Produto</h3>
-          <button className="modal-close" onClick={onClose}>
-            <X size={24} />
-          </button>
+          <button className="modal-close" onClick={onClose}><X size={24} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
           <ImageUpload
-            images={formData.images}
-            onChange={(images) => setFormData({ ...formData, images })}
-            storeId={store.id}
+            previews={previews}
+            pendingFiles={pendingFiles}
+            onPreviewsChange={setPreviews}
+            onPendingFilesChange={setPendingFiles}
           />
 
           <div className="form-group-loja">
@@ -118,7 +105,6 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
               className="form-input"
               value={formData.name}
               onChange={e => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ex: Camiseta Básica"
               maxLength={100}
               required
             />
@@ -130,7 +116,6 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
               className="form-textarea"
               value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Descreva seu produto..."
               rows={4}
               maxLength={500}
             />
@@ -158,7 +143,6 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
                 className="form-input"
                 value={formData.subcategory}
                 onChange={e => setFormData({ ...formData, subcategory: e.target.value })}
-                placeholder="Ex: Feminino"
                 maxLength={50}
               />
             </div>
@@ -172,7 +156,6 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
                 className="form-input"
                 value={formData.price}
                 onChange={e => setFormData({ ...formData, price: e.target.value })}
-                placeholder="0.00"
                 step="0.01"
                 min="0.01"
                 required
@@ -186,7 +169,6 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
                 className="form-input"
                 value={formData.stock}
                 onChange={e => setFormData({ ...formData, stock: e.target.value })}
-                placeholder="0"
                 min="0"
                 required
               />
@@ -196,19 +178,10 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
           {error && <p className="form-error">{error}</p>}
 
           <div className="form-actions">
-            <button 
-              type="button" 
-              className="btn btn-secondary" 
-              onClick={onClose}
-              disabled={loading}
-            >
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
               Cancelar
             </button>
-            <button 
-              type="submit" 
-              className="btn btn-primary" 
-              disabled={loading}
-            >
+            <button type="submit" className="btn btn-primary" disabled={loading}>
               {loading ? 'Salvando...' : 'Salvar Alterações'}
             </button>
           </div>

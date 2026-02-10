@@ -109,10 +109,8 @@ const StoreProductsSection = ({
                             className="btn-edit-product" 
                             onClick={() => {
                               if (isOwnProduct && onEditOwnProduct) {
-                                // Edição completa (nome, descrição, imagens, preço, estoque)
                                 onEditOwnProduct(listing);
                               } else {
-                                // Edição limitada (apenas preço e estoque)
                                 onEditProduct(listing);
                               }
                             }}
@@ -126,7 +124,8 @@ const StoreProductsSection = ({
                             <button
                               className="btn-delete-product"
                               onClick={() => {
-                                onDeleteProduct(listing);
+                                // Passa o listing com store_id garantido
+                                onDeleteProduct({ ...listing, store_id: store.id });
                                 setConfirmingDelete(null);
                               }}
                             >

@@ -521,6 +521,7 @@
   overflow-y: auto;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
   animation: slideUp 0.3s ease;
+  scrollbar-width: none;
 }
 
 @keyframes fadeIn {
@@ -737,8 +738,6 @@
 
   .modal-content {
     margin: 1rem;
-    width: auto;
-    max-width: none;
     padding: 1.5rem;
   }
 }

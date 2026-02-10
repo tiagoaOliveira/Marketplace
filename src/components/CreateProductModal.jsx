@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import ImageUpload from './ImageUpload';
+import { uploadImages } from '../lib/uploadImages';
 import { supabase } from '../lib/supabase';
 import './CreateProductModal.css';
 
@@ -10,52 +11,37 @@ const CreateProductModal = ({ store, onClose, onSuccess }) => {
     description: '',
     category: '',
     subcategory: '',
-    images: [],
     price: '',
     stock: ''
   });
+  const [previews, setPreviews] = useState([]);       // URLs já salvas (vazio na criação)
+  const [pendingFiles, setPendingFiles] = useState([]); // Arquivos aguardando upload
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const categories = [
-    'Alimentos e Bebidas',
-    'Roupas e Acessórios',
-    'Eletrônicos',
-    'Casa e Decoração',
-    'Beleza e Cuidados',
-    'Esportes e Lazer',
-    'Livros e Papelaria',
-    'Outros'
+    'Alimentos e Bebidas', 'Roupas e Acessórios', 'Eletrônicos',
+    'Casa e Decoração', 'Beleza e Cuidados', 'Esportes e Lazer',
+    'Livros e Papelaria', 'Outros'
   ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!formData.name.trim()) {
-      setError('Nome do produto é obrigatório');
-      return;
-    }
 
-    if (formData.images.length === 0) {
-      setError('Adicione pelo menos uma imagem');
-      return;
-    }
-
-    if (!formData.price || parseFloat(formData.price) <= 0) {
-      setError('Preço deve ser maior que zero');
-      return;
-    }
-
-    if (!formData.stock || parseInt(formData.stock) < 0) {
-      setError('Estoque inválido');
-      return;
-    }
+    if (!formData.name.trim()) { setError('Nome do produto é obrigatório'); return; }
+    if (pendingFiles.length === 0 && previews.length === 0) { setError('Adicione pelo menos uma imagem'); return; }
+    if (!formData.price || parseFloat(formData.price) <= 0) { setError('Preço deve ser maior que zero'); return; }
+    if (formData.stock === '' || parseInt(formData.stock) < 0) { setError('Estoque inválido'); return; }
 
     setLoading(true);
     setError('');
 
     try {
-      // 1. Criar produto
+      // Só faz upload aqui, no submit
+      const uploadedUrls = await uploadImages(pendingFiles, store.id);
+      const allImages = [...previews, ...uploadedUrls];
+
+      // Cria o produto
       const { data: product, error: productError } = await supabase
         .from('products')
         .insert({
@@ -63,15 +49,15 @@ const CreateProductModal = ({ store, onClose, onSuccess }) => {
           description: formData.description,
           category: formData.category,
           subcategory: formData.subcategory,
-          images: formData.images,
-          store_id: store.id // Produto pertence à loja
+          images: allImages,
+          store_id: store.id
         })
         .select()
         .single();
 
       if (productError) throw productError;
 
-      // 2. Criar product_listing
+      // Cria o listing
       const { error: listingError } = await supabase
         .from('product_listings')
         .insert({
@@ -99,16 +85,15 @@ const CreateProductModal = ({ store, onClose, onSuccess }) => {
       <div className="modal-content create-product-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Criar Novo Produto</h3>
-          <button className="modal-close" onClick={onClose}>
-            <X size={24} />
-          </button>
+          <button className="modal-close" onClick={onClose}><X size={24} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="modal-form">
           <ImageUpload
-            images={formData.images}
-            onChange={(images) => setFormData({ ...formData, images })}
-            storeId={store.id}
+            previews={previews}
+            pendingFiles={pendingFiles}
+            onPreviewsChange={setPreviews}
+            onPendingFilesChange={setPendingFiles}
           />
 
           <div className="form-group-loja">
@@ -118,7 +103,7 @@ const CreateProductModal = ({ store, onClose, onSuccess }) => {
               className="form-input"
               value={formData.name}
               onChange={e => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ex: Camiseta Básica"
+              placeholder=""
               maxLength={100}
               required
             />
@@ -158,7 +143,7 @@ const CreateProductModal = ({ store, onClose, onSuccess }) => {
                 className="form-input"
                 value={formData.subcategory}
                 onChange={e => setFormData({ ...formData, subcategory: e.target.value })}
-                placeholder="Ex: Feminino"
+                placeholder="Não obrigatório"
                 maxLength={50}
               />
             </div>
@@ -196,19 +181,10 @@ const CreateProductModal = ({ store, onClose, onSuccess }) => {
           {error && <p className="form-error">{error}</p>}
 
           <div className="form-actions">
-            <button 
-              type="button" 
-              className="btn btn-secondary" 
-              onClick={onClose}
-              disabled={loading}
-            >
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
               Cancelar
             </button>
-            <button 
-              type="submit" 
-              className="btn btn-primary" 
-              disabled={loading}
-            >
+            <button type="submit" className="btn btn-primary" disabled={loading}>
               {loading ? 'Criando...' : 'Criar Produto'}
             </button>
           </div>
