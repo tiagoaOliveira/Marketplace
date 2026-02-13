@@ -166,7 +166,7 @@ export const ProductModalProvider = ({ children }) => {
       productId: produto.productId || produto.id,
       productListingId: produto.productListingId || produto.id,
       nome: produto.nome || produto.name,
-      descricao: produto.descricao || produto.description,
+      descricao: produto.descricao || produto.description || '',
       preco: parseFloat(produto.preco || produto.precoMinimo || produto.price || 0),
       stock: produto.stock || produto.totalEstoque || 0,
       categoria: produto.categoria || produto.category,

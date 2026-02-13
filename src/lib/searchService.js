@@ -5,6 +5,7 @@ export const searchService = {
   /**
    * ✅ NOVO - Busca apenas no catálogo de produtos (sem filtrar por listings)
    * Usado para vendedores adicionarem produtos às suas lojas
+   * APENAS produtos globais (store_id IS NULL) e ativos
    */
   async searchCatalog(termo, options = {}) {
     const { limit = 20 } = options;
@@ -17,6 +18,8 @@ export const searchService = {
       const { data, error } = await supabase
         .from('products')
         .select('id, name, description, category, subcategory, images')
+        .is('store_id', null)  // Apenas produtos globais
+        .eq('is_active', true)  // Apenas produtos ativos
         .or(`name.ilike.%${termo}%,category.ilike.%${termo}%,subcategory.ilike.%${termo}%,description.ilike.%${termo}%`)
         .limit(limit);
 

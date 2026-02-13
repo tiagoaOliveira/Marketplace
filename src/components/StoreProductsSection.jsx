@@ -56,7 +56,7 @@ const StoreProductsSection = ({
 
           <div className="store-products">
             {loading ? (
-              <p className="loading-products">Carregando produtos...</p>
+              <p className="loading-products"></p>
             ) : products.length > 0 ? (
               <div className="products-list">
                 {products.map(listing => {
@@ -85,9 +85,6 @@ const StoreProductsSection = ({
                       <div className="product-info">
                         <h5>
                           {productName}
-                          {isOwnProduct && (
-                            <span className="own-product-badge">Seu Produto</span>
-                          )}
                         </h5>
                         {productCategory && (
                           <p className="product-category">{productCategory}</p>

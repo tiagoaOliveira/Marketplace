@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listingsService } from '../lib/services';
 import { useProductModalContext } from '../contexts/ProductModalContext.jsx';
-import './produtos.css';
+import './Produtos.css';
 import { useSlug } from '../hooks/useSlug';
 
 const ProdutosShowcase = ({ categoriaFiltro }) => {
@@ -40,6 +40,7 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
             stock: listing.stock,
             categoria: listing.products.category,
             subcategoria: listing.products.subcategory,
+            descricao: listing.products.description,
             loja: listing.stores.name,
             imagem: listing.products.images?.[0],
             images: listing.products.images || []
@@ -75,7 +76,7 @@ const ProdutosShowcase = ({ categoriaFiltro }) => {
     abrirModalProduto(produto, { showControls: true, onStoreClick: irParaLoja });
   };
 
-  if (loading) return <div className="produtos-container">Carregando...</div>;
+  if (loading) return <div className="produtos-container"></div>;
 
   return (
     <div className="produtos-container">

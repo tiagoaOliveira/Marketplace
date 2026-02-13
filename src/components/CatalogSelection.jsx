@@ -63,10 +63,9 @@ const CatalogSection = ({
             </div>
           </div>
 
-          {/* Resto do código permanece igual */}
           <div className="store-products">
             {loading ? (
-              <p className="loading-products">Carregando catálogo...</p>
+              <p className="loading-products"></p>
             ) : catalogProducts.length > 0 ? (
               <>
                 {searchTerm && (
@@ -93,9 +92,6 @@ const CatalogSection = ({
                         <div className="product-info">
                           <h5>
                             {product.name}
-                            {product.store_id && (
-                              <span className="own-product-badge">Seu Produto</span>
-                            )}
                             {canReactivate && (
                               <span className="inactive-badge">⚠️ Desativado</span>
                             )}

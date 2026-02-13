@@ -281,7 +281,7 @@ const CarrinhoCompras = () => {
           </button>
           <h1>Carrinho de Compras</h1>
         </div>
-        <div><p>Carregando carrinho...</p></div>
+        <div></div>
       </div>
     );
   }

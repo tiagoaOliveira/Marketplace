@@ -232,7 +232,7 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
     }
 
     if (loading) {
-        return <div className="pedidos-loading">Carregando pedidos...</div>
+        return <div className="pedidos-loading"></div>
     }
 
     return (

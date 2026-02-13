@@ -13,7 +13,7 @@ import StoreForm from './StoreForm';
 import StoreCard from '../components/StoreCard';
 import ProductModal from '../components/ProductModal';
 import AddProductModal from '../components/AddProductModal';
-import CreateProductModal from '../components/CreateProductModal';
+import CreateProductModal from '../components/CreateProductModal'; // NOVO
 import EditOwnProductModal from '../components/EditOwnProductModal'; // NOVO
 import StoreProductsSection from '../components/StoreProductsSection';
 import CatalogSection from '../components/CatalogSelection';
@@ -41,11 +41,11 @@ const Stores = () => {
   // Estados de modais
   const [editingProduct, setEditingProduct] = useState(null);
   const [addingProduct, setAddingProduct] = useState(null);
-  const [createProductModal, setCreateProductModal] = useState({ 
+  const [createProductModal, setCreateProductModal] = useState({ // NOVO
     isOpen: false,
     store: null
   });
-  const [editOwnProductModal, setEditOwnProductModal] = useState({ 
+  const [editOwnProductModal, setEditOwnProductModal] = useState({ // NOVO
     isOpen: false,
     listing: null,
     store: null
@@ -250,10 +250,10 @@ const Stores = () => {
     }
 
     if (addressChanged && updates.address?.zip_code) {
-      const coords = await geoService.getCoordinatesFromZipCode(updates.address.zip_code);
+      const coords = await geoService.getCoordinatesFromCEP(updates.address.zip_code);
       if (coords) {
         await supabase.from('stores').update({
-          location: `POINT(${coords.lng} ${coords.lat})`
+          location: `POINT(${coords.longitude} ${coords.latitude})`
         }).eq('id', editingStore.id);
       }
     }
@@ -272,10 +272,10 @@ const Stores = () => {
     }
 
     if (formData.address?.zip_code) {
-      const coords = await geoService.getCoordinatesFromZipCode(formData.address.zip_code);
+      const coords = await geoService.getCoordinatesFromCEP(formData.address.zip_code);
       if (coords && result.data?.[0]?.id) {
         await supabase.from('stores').update({
-          location: `POINT(${coords.lng} ${coords.lat})`
+          location: `POINT(${coords.longitude} ${coords.latitude})`
         }).eq('id', result.data[0].id);
       }
     }
@@ -314,7 +314,15 @@ const Stores = () => {
 
   const handleCreateNew = () => {
     setCreatingStore(true);
-    resetForm();
+    setEditingStore(null);
+    setFormData({
+      name: '', business_name: '', description: '', category: '', cnpj: '', 
+      email: '', phone: '',
+      address: { street: '', number: '', complement: '', neighborhood: '', 
+                 city: '', state: '', zip_code: '' },
+      business_hours: []
+    });
+    setFormErrors({});
   };
 
   const handleSaveBusinessHours = (hours) => {
@@ -342,6 +350,7 @@ const Stores = () => {
     }
   };
 
+  // NOVO: Handlers do modal de edição de produto próprio
   const handleOpenEditOwnProduct = (listing, store) => {
     setEditOwnProductModal({
       isOpen: true,
@@ -364,39 +373,77 @@ const Stores = () => {
     }
   };
 
-  const handleDeleteProduct = async (productId) => {
-    if (confirmingDelete !== productId) {
-      setConfirmingDelete(productId);
-      return;
-    }
+  // Handlers de produtos
+  const handleDeleteProduct = async (listing) => {
+    const storeId = listing.store_id;
+    const isOwnProduct = listing.products?.store_id === storeId;
 
     try {
-      const { error } = await supabase
-        .from('product_listings')
-        .update({ is_active: false })
-        .eq('id', productId);
+      if (isOwnProduct) {
+        // Produto próprio: soft delete no produto + apaga imagens do storage
+        const images = listing.products?.images || [];
 
-      if (error) {
-        showNotification('Erro ao remover produto.', 'error');
-        return;
+        // 1. Soft delete no listing
+        const { error: listingError } = await supabase
+          .from('product_listings')
+          .update({ is_active: false })
+          .eq('id', listing.id);
+
+        if (listingError) throw listingError;
+
+        // 2. Soft delete no produto (só da loja)
+        const { error: productError } = await supabase
+          .from('products')
+          .update({ is_active: false })
+          .eq('id', listing.products.id)
+          .eq('store_id', storeId);
+
+        if (productError) throw productError;
+
+        // 3. Apaga imagens do storage (economia de espaço)
+        if (images.length > 0) {
+          const paths = images
+            .map(url => {
+              const match = url.match(/product-images\/(.+)$/);
+              return match ? match[1] : null;
+            })
+            .filter(Boolean);
+          
+          console.log('Deletando imagens do produto:', paths);
+          
+          if (paths.length > 0) {
+            const { error: storageError } = await supabase.storage
+              .from('product-images')
+              .remove(paths);
+            
+            if (storageError) {
+              console.error('Erro ao remover imagens:', storageError);
+            } else {
+              console.log('Imagens removidas com sucesso');
+            }
+          }
+        }
+      } else {
+        // Produto global: apenas desativa o listing
+        const { error } = await supabase
+          .from('product_listings')
+          .update({ is_active: false })
+          .eq('id', listing.id);
+
+        if (error) throw error;
       }
 
-      const storeId = Object.keys(storeProducts).find(id => 
-        storeProducts[id].some(p => p.id === productId)
-      );
-
-      if (storeId) {
-        setStoreProducts(prev => ({
-          ...prev,
-          [storeId]: prev[storeId].filter(p => p.id !== productId)
-        }));
-      }
+      setStoreProducts(prev => ({
+        ...prev,
+        [storeId]: (prev[storeId] || []).filter(p => p.id !== listing.id),
+        [`${storeId}_all`]: (prev[`${storeId}_all`] || []).filter(p => p.id !== listing.id)
+      }));
 
       showNotification('Produto removido com sucesso!', 'success');
       setConfirmingDelete(null);
     } catch (error) {
       console.error('Erro ao remover produto:', error);
-      showNotification('Erro ao remover produto.', 'error');
+      showNotification('Erro ao remover produto. Tente novamente.', 'error');
     }
   };
 
@@ -535,7 +582,7 @@ const Stores = () => {
           </button>
           <h1>Minha Loja</h1>
         </div>
-        <div className="loading-message">Carregando lojas...</div>
+        <div className="loading-message"></div>
       </div>
     );
   }
@@ -598,7 +645,7 @@ const Stores = () => {
         />
       )}
 
-      {/* Modal de Editar Produto Próprio */}
+      {/* NOVO: Modal de Editar Produto Próprio */}
       {editOwnProductModal.isOpen && (
         <EditOwnProductModal
           listing={editOwnProductModal.listing}
@@ -637,25 +684,27 @@ const Stores = () => {
                   onSearchChange={searchProductsInStore.setSearchTerm}
                   onClearSearch={searchProductsInStore.handleClear}
                   onEditProduct={setEditingProduct}
-                  onEditOwnProduct={(listing) => handleOpenEditOwnProduct(listing, store)}
+                  onEditOwnProduct={(listing) => handleOpenEditOwnProduct(listing, store)} 
                   onDeleteProduct={handleDeleteProduct}
                   confirmingDelete={confirmingDelete}
                   setConfirmingDelete={setConfirmingDelete}
                 />
 
-                <CatalogSection
-                  store={store}
-                  expanded={expandedCatalog === store.id}
-                  onToggle={handleToggleCatalog}
-                  catalogProducts={searchCatalog.produtos}
-                  loading={searchCatalog.loading}
-                  searchTerm={searchCatalog.searchTerm}
-                  onSearchChange={searchCatalog.setSearchTerm}
-                  onClearSearch={searchCatalog.handleClear}
-                  storeProducts={storeProducts[`${store.id}_all`] || []}
-                  onAddProduct={(product) => setAddingProduct({ product, store })}
-                  onCreateProduct={() => handleOpenCreateProduct(store)}
-                />
+                {store.is_approved && (
+                  <CatalogSection
+                    store={store}
+                    expanded={expandedCatalog === store.id}
+                    onToggle={handleToggleCatalog}
+                    catalogProducts={searchCatalog.produtos}
+                    loading={searchCatalog.loading}
+                    searchTerm={searchCatalog.searchTerm}
+                    onSearchChange={searchCatalog.setSearchTerm}
+                    onClearSearch={searchCatalog.handleClear}
+                    storeProducts={storeProducts[`${store.id}_all`] || []}
+                    onAddProduct={(product) => setAddingProduct({ product, store })}
+                    onCreateProduct={() => handleOpenCreateProduct(store)}
+                  />
+                )}
               </React.Fragment>
             ))
           )}

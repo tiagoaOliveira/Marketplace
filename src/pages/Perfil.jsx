@@ -614,7 +614,7 @@ const PerfilUsuario = () => {
 
   const renderConteudo = () => {
     if (loading) {
-      return <div className="loading-message">Carregando...</div>
+      return <div className="loading-message"></div>
     }
 
     switch (telaAtiva) {

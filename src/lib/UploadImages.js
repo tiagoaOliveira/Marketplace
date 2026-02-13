@@ -1,82 +1,28 @@
 import { supabase } from './supabase';
 import imageCompression from 'browser-image-compression';
 
+/**
+ * Faz upload dos arquivos pendentes para o Supabase Storage.
+ * Chame apenas no submit do formulário.
+ */
 export const uploadImages = async (pendingFiles, storeId) => {
-  // Função interna para redimensionar para 512x512
-  const resizeTo512 = (file) => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const reader = new FileReader();
-
-      reader.onload = (e) => {
-        img.src = e.target.result;
-      };
-
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const size = 512;
-
-        canvas.width = size;
-        canvas.height = size;
-
-        const ctx = canvas.getContext('2d');
-
-        const ratio = Math.max(size / img.width, size / img.height);
-        const newWidth = img.width * ratio;
-        const newHeight = img.height * ratio;
-
-        const x = (size - newWidth) / 2;
-        const y = (size - newHeight) / 2;
-
-        ctx.drawImage(img, x, y, newWidth, newHeight);
-
-        canvas.toBlob(
-          (blob) => {
-            const newFile = new File([blob], file.name, {
-              type: 'image/webp',
-            });
-            resolve(newFile);
-          },
-          'image/webp',
-          0.85
-        );
-      };
-
-      img.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   const uploadPromises = pendingFiles.map(async (file) => {
-    // 1. Redimensiona para 512x512
-    let processedFile = await resizeTo512(file);
+    const compressed = await imageCompression(file, {
+      maxSizeMB: 0.5,
+      maxWidthOrHeight: 1200,
+      useWebWorker: true
+    });
 
-    // 2. Compressão extra se ainda estiver grande
-    if (processedFile.size > 500 * 1024) {
-      processedFile = await imageCompression(processedFile, {
-        maxSizeMB: 0.5,
-        initialQuality: 0.85,
-        useWebWorker: true,
-      });
-    }
-
-    const fileName = `${storeId}/${Date.now()}-${Math.random()
-      .toString(36)
-      .substring(7)}.webp`;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${storeId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
     const { data, error } = await supabase.storage
       .from('product-images')
-      .upload(fileName, processedFile, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: 'image/webp',
-      });
+      .upload(fileName, compressed, { cacheControl: '3600', upsert: false });
 
     if (error) throw error;
 
-    const {
-      data: { publicUrl },
-    } = supabase.storage
+    const { data: { publicUrl } } = supabase.storage
       .from('product-images')
       .getPublicUrl(data.path);
 
@@ -84,4 +30,40 @@ export const uploadImages = async (pendingFiles, storeId) => {
   });
 
   return Promise.all(uploadPromises);
+};
+
+/**
+ * Remove imagens do storage que foram excluídas pelo usuário.
+ * Compara as URLs originais com as que sobraram.
+ */
+export const deleteRemovedImages = async (originalUrls = [], currentUrls = []) => {
+  const removed = originalUrls.filter(url => !currentUrls.includes(url));
+  if (removed.length === 0) return;
+
+  console.log('Imagens a remover:', removed);
+
+  const paths = removed
+    .map(url => {
+
+      let match = url.match(/product-images\/(.+)$/);
+      if (match) {
+        console.log('Path extraído:', match[1]);
+        return match[1];
+      }
+      
+      console.warn('Não foi possível extrair path de:', url);
+      return null;
+    })
+    .filter(Boolean);
+
+  console.log('Paths a deletar:', paths);
+
+  if (paths.length > 0) {
+    const { data, error } = await supabase.storage.from('product-images').remove(paths);
+    if (error) {
+      console.error('Erro ao remover imagens do storage:', error);
+    } else {
+      console.log('Imagens removidas com sucesso:', data);
+    }
+  }
 };

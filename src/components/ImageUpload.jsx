@@ -15,29 +15,13 @@ const getCroppedImg = async (imageSrc, crop) => {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
   const size = 512;
-
   canvas.width = size;
   canvas.height = size;
-
   const ctx = canvas.getContext('2d');
-
-  ctx.drawImage(
-    image,
-    crop.x,
-    crop.y,
-    crop.width,
-    crop.height,
-    0,
-    0,
-    size,
-    size
-  );
-
+  ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, size, size);
   return new Promise((resolve) => {
     canvas.toBlob(
-      (blob) => {
-        resolve(new File([blob], 'cropped.webp', { type: 'image/webp' }));
-      },
+      (blob) => resolve(new File([blob], 'cropped.webp', { type: 'image/webp' })),
       'image/webp',
       0.9
     );
@@ -45,8 +29,8 @@ const getCroppedImg = async (imageSrc, crop) => {
 };
 
 const ImageUpload = ({
-  previews = [],
-  pendingFiles = [],
+  previews = [],           // URLs já salvas no banco
+  pendingFiles = [],       // Arquivos novos aguardando upload
   onPreviewsChange,
   onPendingFilesChange,
   maxImages = 5,
@@ -67,14 +51,12 @@ const ImageUpload = ({
   const handleSelect = (e) => {
     const file = e.target.files[0];
     e.target.value = '';
-
     if (!file) return;
 
     if (!allowedTypes.includes(file.type)) {
       setError('Apenas JPG, PNG e WebP são permitidos');
       return;
     }
-
     if (totalImages >= maxImages) {
       setError(`Máximo de ${maxImages} imagens`);
       return;
@@ -94,6 +76,11 @@ const ImageUpload = ({
     onPendingFilesChange(pendingFiles.filter((_, i) => i !== index));
   };
 
+  // Remove imagem salva — o modal cuida de deletar do storage no submit
+  const handleRemovePreview = (url) => {
+    onPreviewsChange(previews.filter(u => u !== url));
+  };
+
   return (
     <div className="image-upload-container">
       <label className="image-upload-label">
@@ -101,16 +88,24 @@ const ImageUpload = ({
       </label>
 
       <div className="images-preview">
-        {pendingFiles.map((file, index) => (
-          <div key={index} className="image-preview-item">
-            <img src={URL.createObjectURL(file)} alt="Preview" />
-            <button
-              type="button"
-              className="remove-image-btn"
-              onClick={() => handleRemovePending(index)}
-            >
+        {/* Imagens já salvas no banco */}
+        {previews.map((url) => (
+          <div key={url} className="image-preview-item">
+            <img src={url} alt="Imagem salva" />
+            <button type="button" className="remove-image-btn" onClick={() => handleRemovePreview(url)}>
               <X size={16} />
             </button>
+          </div>
+        ))}
+
+        {/* Arquivos novos com preview local */}
+        {pendingFiles.map((file, index) => (
+          <div key={index} className="image-preview-item pending">
+            <img src={URL.createObjectURL(file)} alt="Preview" />
+            <button type="button" className="remove-image-btn" onClick={() => handleRemovePending(index)}>
+              <X size={16} />
+            </button>
+            <span className="pending-badge">Pendente</span>
           </div>
         ))}
 
@@ -130,7 +125,6 @@ const ImageUpload = ({
 
       {error && <p className="upload-error">{error}</p>}
 
-      {/* Tela de crop */}
       {cropSrc && (
         <div className="crop-modal">
           <div className="crop-container">
@@ -144,10 +138,9 @@ const ImageUpload = ({
               onCropComplete={onCropComplete}
             />
           </div>
-
           <div className="crop-actions">
-            <button onClick={() => setCropSrc(null)}>Cancelar</button>
-            <button onClick={handleCropSave}>Salvar</button>
+            <button type="button" onClick={() => setCropSrc(null)}>Cancelar</button>
+            <button type="button" onClick={handleCropSave}>Salvar</button>
           </div>
         </div>
       )}

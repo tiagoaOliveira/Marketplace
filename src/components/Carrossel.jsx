@@ -41,19 +41,17 @@ const Carrossel = () => {
     }
   };
 
-  // Se estiver carregando
   if (loading) {
     return (
       <div>
         <h2 className='carrossel-title'>Lojas Próximas</h2>
         <div className="slider">
-          <div className="carrossel-loading">Carregando lojas...</div>
+          <div className="carrossel-loading"></div>
         </div>
       </div>
     );
   }
 
-  // Se não houver lojas
   if (!stores || stores.length === 0) {
     return (
       <div>

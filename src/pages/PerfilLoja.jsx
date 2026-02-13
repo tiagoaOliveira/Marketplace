@@ -140,7 +140,7 @@ const PerfilLoja = () => {
   };
 
   if (loading) {
-    return <div className="perfil-loja-container">Carregando...</div>;
+    return <div className="perfil-loja-container"></div>;
   }
 
   if (!loja) {

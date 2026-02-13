@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import ImageUpload from './ImageUpload';
-import { uploadImages } from '../lib/uploadImages';
+import { uploadImages, deleteRemovedImages } from '../lib/uploadImages';
 import { supabase } from '../lib/supabase';
 import './CreateProductModal.css';
 
 const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
   const product = listing.products || listing.product;
+  const originalImages = product.images || [];
 
   const [formData, setFormData] = useState({
     name: product.name || '',
@@ -16,8 +17,8 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
     price: listing.price || '',
     stock: listing.stock || ''
   });
-  const [previews, setPreviews] = useState(product.images || []); // URLs já salvas
-  const [pendingFiles, setPendingFiles] = useState([]);            // Novos arquivos
+  const [previews, setPreviews] = useState(originalImages);  // URLs já salvas
+  const [pendingFiles, setPendingFiles] = useState([]);       // Arquivos novos
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -39,14 +40,17 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
     setError('');
 
     try {
-      // Faz upload dos novos arquivos apenas no submit
+      // 1. Remove do storage imagens que foram excluídas pelo usuário
+      await deleteRemovedImages(originalImages, previews);
+
+      // 2. Faz upload das novas imagens
       const uploadedUrls = pendingFiles.length > 0
         ? await uploadImages(pendingFiles, store.id)
         : [];
 
       const allImages = [...previews, ...uploadedUrls];
 
-      // Atualiza produto (só da loja, por segurança)
+      // 3. Atualiza produto (só da loja por segurança)
       const { error: productError } = await supabase
         .from('products')
         .update({
@@ -61,7 +65,7 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
 
       if (productError) throw productError;
 
-      // Atualiza preço e estoque
+      // 4. Atualiza preço e estoque
       const { error: listingError } = await supabase
         .from('product_listings')
         .update({
@@ -100,78 +104,47 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
 
           <div className="form-group-loja">
             <label>Nome do Produto *</label>
-            <input
-              type="text"
-              className="form-input"
-              value={formData.name}
+            <input type="text" className="form-input" value={formData.name}
               onChange={e => setFormData({ ...formData, name: e.target.value })}
-              maxLength={100}
-              required
-            />
+              maxLength={100} required />
           </div>
 
           <div className="form-group-loja">
             <label>Descrição</label>
-            <textarea
-              className="form-textarea"
-              value={formData.description}
+            <textarea className="form-textarea" value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              maxLength={500}
-            />
+              rows={4} maxLength={500} />
           </div>
 
           <div className="form-row">
             <div className="form-group-loja">
               <label>Categoria</label>
-              <select
-                className="form-select"
-                value={formData.category}
-                onChange={e => setFormData({ ...formData, category: e.target.value })}
-              >
+              <select className="form-select" value={formData.category}
+                onChange={e => setFormData({ ...formData, category: e.target.value })}>
                 <option value="">Selecione...</option>
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
+                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
             </div>
-
             <div className="form-group-loja">
               <label>Subcategoria</label>
-              <input
-                type="text"
-                className="form-input"
-                value={formData.subcategory}
+              <input type="text" className="form-input" value={formData.subcategory}
                 onChange={e => setFormData({ ...formData, subcategory: e.target.value })}
-                maxLength={50}
-              />
+                maxLength={50} />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group-loja">
               <label>Preço (R$) *</label>
-              <input
-                type="number"
-                className="form-input"
-                value={formData.price}
+              <input type="number" className="form-input" value={formData.price}
                 onChange={e => setFormData({ ...formData, price: e.target.value })}
-                step="0.01"
-                min="0.01"
-                required
-              />
+                step="0.01" min="0.01" required />
             </div>
-
             <div className="form-group-loja">
               <label>Estoque *</label>
-              <input
-                type="number"
-                className="form-input"
-                value={formData.stock}
+              <input type="number" className="form-input" value={formData.stock}
                 onChange={e => setFormData({ ...formData, stock: e.target.value })}
-                min="0"
-                required
-              />
+                min="0" required />
             </div>
           </div>
 
