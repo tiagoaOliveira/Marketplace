@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import ImageUpload from './ImageUpload';
-import { uploadImages } from '../lib/uploadImages';
+import { uploadImages } from '../lib/UploadImages';
 import { supabase } from '../lib/supabase';
 import './CreateProductModal.css';
 
@@ -14,8 +14,8 @@ const CreateProductModal = ({ store, onClose, onSuccess }) => {
     price: '',
     stock: ''
   });
-  const [previews, setPreviews] = useState([]);       // URLs já salvas (vazio na criação)
-  const [pendingFiles, setPendingFiles] = useState([]); // Arquivos aguardando upload
+  const [previews, setPreviews] = useState([]);       
+  const [pendingFiles, setPendingFiles] = useState([]); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 

@@ -1,10 +1,6 @@
 import { supabase } from './supabase';
 import imageCompression from 'browser-image-compression';
 
-/**
- * Faz upload dos arquivos pendentes para o Supabase Storage.
- * Chame apenas no submit do formulário.
- */
 export const uploadImages = async (pendingFiles, storeId) => {
   const uploadPromises = pendingFiles.map(async (file) => {
     const compressed = await imageCompression(file, {
