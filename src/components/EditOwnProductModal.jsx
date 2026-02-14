@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import ImageUpload from './ImageUpload';
-import { uploadImages, deleteRemovedImages } from '../lib/uploadImages';
+import { uploadImages, deleteRemovedImages } from '../lib/UploadImages';
 import { supabase } from '../lib/supabase';
 import './CreateProductModal.css';
 
@@ -17,8 +17,8 @@ const EditOwnProductModal = ({ listing, store, onClose, onSuccess }) => {
     price: listing.price || '',
     stock: listing.stock || ''
   });
-  const [previews, setPreviews] = useState(originalImages);  // URLs já salvas
-  const [pendingFiles, setPendingFiles] = useState([]);       // Arquivos novos
+  const [previews, setPreviews] = useState(originalImages);  
+  const [pendingFiles, setPendingFiles] = useState([]);       
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
