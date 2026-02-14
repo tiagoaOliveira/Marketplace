@@ -61,6 +61,17 @@ const CarrinhoCompras = () => {
 
       if (cart && cart.cart_items) {
         setCartId(cart.id);
+        
+        // Buscar shipping_fee das lojas
+        const storeIds = [...new Set(cart.cart_items.map(i => i.product_listings.store_id))];
+        const { data: stores } = await supabase
+          .from('stores')
+          .select('id, shipping_fee')
+          .in('id', storeIds);
+        
+        const shippingFees = {};
+        stores?.forEach(s => { shippingFees[s.id] = s.shipping_fee || 0; });
+        
         const itens = cart.cart_items.map(item => ({
           id: item.id,
           cartId: cart.id,
@@ -71,6 +82,8 @@ const CarrinhoCompras = () => {
           stock: item.product_listings.stock,
           storeName: item.product_listings.stores.name,
           storeId: item.product_listings.store_id,
+          shippingFee: shippingFees[item.product_listings.store_id] || 0,
+          loja: item.product_listings.stores.name,
           imagem: item.product_listings.products.images?.[0],
           images: item.product_listings.products.images
         }));
@@ -101,11 +114,38 @@ const CarrinhoCompras = () => {
     }
   };
 
-  const calcularTotal = () => {
-    return itensCarrinho.reduce((total, item) => {
+  const agruparPorLoja = () => {
+    const lojas = {};
+    
+    itensCarrinho.forEach(item => {
+      const storeId = item.storeId;
+      const storeName = item.loja;
+      
+      if (!lojas[storeId]) {
+        lojas[storeId] = {
+          storeId,
+          storeName,
+          shippingFee: item.shippingFee || 0,
+          items: [],
+          subtotal: 0
+        };
+      }
+      
       const qtd = getQuantidade({ productListingId: item.productListingId });
-      return total + (item.preco * qtd);
-    }, 0);
+      const itemTotal = item.preco * qtd;
+      
+      lojas[storeId].items.push({ ...item, quantidade: qtd, total: itemTotal });
+      lojas[storeId].subtotal += itemTotal;
+    });
+    
+    return Object.values(lojas);
+  };
+
+  const calcularTotal = () => {
+    const lojas = agruparPorLoja();
+    const subtotal = lojas.reduce((acc, loja) => acc + loja.subtotal, 0);
+    const frete = lojas.reduce((acc, loja) => acc + (loja.shippingFee || 0), 0);
+    return { subtotal, frete, total: subtotal + frete };
   };
 
   const verificarPerfilCompleto = (userData) => {
@@ -155,7 +195,7 @@ const CarrinhoCompras = () => {
     setShowConfirmacao(false);
 
     try {
-      const totalAmount = calcularTotal();
+      const { subtotal, frete, total } = calcularTotal();
 
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -168,7 +208,9 @@ const CarrinhoCompras = () => {
           buyer_numero: dadosUsuario.numero,
           buyer_bairro: dadosUsuario.bairro,
           buyer_cidade: dadosUsuario.cidade,
-          total_amount: totalAmount
+          subtotal: subtotal,
+          shipping_fee: frete,
+          total_amount: total
         }])
         .select();
 
@@ -183,18 +225,23 @@ const CarrinhoCompras = () => {
       const orderId = order[0].id;
       setOrderId(orderId);
 
-      const orderItems = itensCarrinho.map(item => {
-        const qtd = getQuantidade({ productListingId: item.productListingId });
-        return {
-          order_id: orderId,
-          product_listing_id: item.productListingId,
-          product_name: item.nome,
-          store_id: item.storeId,
-          store_name: item.storeName,
-          price: item.preco,
-          quantity: qtd,
-          subtotal: item.preco * qtd
-        };
+      // Criar order_items sem shipping_fee (já está em orders)
+      const orderItems = [];
+      const lojas = agruparPorLoja();
+      
+      lojas.forEach(loja => {
+        loja.items.forEach(item => {
+          orderItems.push({
+            order_id: orderId,
+            product_listing_id: item.productListingId,
+            product_name: item.nome,
+            store_id: item.storeId,
+            store_name: item.storeName,
+            price: item.preco,
+            quantity: item.quantidade,
+            subtotal: item.total
+          });
+        });
       });
 
       const { error: itemsError } = await supabase
@@ -256,20 +303,6 @@ const CarrinhoCompras = () => {
 
   const irParaPerfil = () => {
     navigate('/perfil');
-  };
-
-  const agruparPorLoja = () => {
-    const agrupado = {};
-    itensCarrinho.forEach(item => {
-      if (!agrupado[item.storeId]) {
-        agrupado[item.storeId] = {
-          storeName: item.storeName,
-          items: []
-        };
-      }
-      agrupado[item.storeId].items.push(item);
-    });
-    return agrupado;
   };
 
   if (loading) {
@@ -416,15 +449,19 @@ const CarrinhoCompras = () => {
               <h3>Resumo do Pedido</h3>
               <div className="resumo-linha">
                 <span>Subtotal:</span>
-                <span>R$ {calcularTotal().toFixed(2).replace('.', ',')}</span>
+                <span>R$ {calcularTotal().subtotal.toFixed(2).replace('.', ',')}</span>
               </div>
               <div className="resumo-linha">
                 <span>Frete:</span>
-                <span>Grátis</span>
+                <span>
+                  {calcularTotal().frete > 0 
+                    ? `R$ ${calcularTotal().frete.toFixed(2).replace('.', ',')}` 
+                    : 'Grátis'}
+                </span>
               </div>
               <div className="resumo-total">
                 <span>Total:</span>
-                <span>R$ {calcularTotal().toFixed(2).replace('.', ',')}</span>
+                <span>R$ {calcularTotal().total.toFixed(2).replace('.', ',')}</span>
               </div>
               <button className="btn btn-primary btn-lg carrinho-finalizar" onClick={finalizarCompra} disabled={finalizando}>
                 {finalizando ? 'Processando...' : 'Finalizar Compra'}
@@ -437,7 +474,6 @@ const CarrinhoCompras = () => {
       {modalSucesso && (
         <div className="modal-overlay-fixed">
           <div className="modal-content-fixed">
-            <div className="modal-icon-success">✓</div>
             <h2 className="modal-title">Compra Finalizada!</h2>
             <p className="modal-text">Acompanhe seu pedido em "Meus pedidos".</p>
           </div>

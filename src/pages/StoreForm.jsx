@@ -73,6 +73,19 @@ const StoreForm = ({
             <input type="text" name="cnpj" value={formData.cnpj} onChange={handleInputChange} placeholder="00.000.000/0001-00" />
             {formErrors.cnpj && <span className="field-error">{formErrors.cnpj}</span>}
           </div>
+          <div className="form-group-loja">
+            <label>Taxa de Entrega (R$)</label>
+            <input 
+              type="number" 
+              name="shipping_fee" 
+              value={formData.shipping_fee || ''} 
+              onChange={handleInputChange} 
+              placeholder="0.00" 
+              step="0.01"
+              min="0"
+            />
+            <small className="field-hint">Deixe vazio ou zero para frete grátis</small>
+          </div>
         </div>
         <div className="form-section">
           <h3>Horário de Funcionamento</h3>

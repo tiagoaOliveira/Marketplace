@@ -1,6 +1,8 @@
 .produtos-container {
   padding: 1rem 1rem;
   min-height: 440px;
+  max-width: 1200px;
+  margin: 0 auto;
   margin-top: 1rem;
 }
 
@@ -8,8 +10,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 .produtos-vazio {
@@ -142,15 +142,12 @@
   to { opacity: 0; }
 }
 
-/* Modal Content */
 .modal-content-products {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   background: white;
-  width: 100%;
-  height: 92vh;
   overflow-y: auto;
   box-shadow: 0 -10px 50px rgba(0, 0, 0, 0.3);
   animation: slideUpFromBottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);

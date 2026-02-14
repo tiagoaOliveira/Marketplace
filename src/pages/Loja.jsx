@@ -58,7 +58,7 @@ const Stores = () => {
   // Estados do formulário
   const [formData, setFormData] = useState({
     name: '', business_name: '', description: '', category: '', cnpj: '', 
-    email: '', phone: '',
+    email: '', phone: '', shipping_fee: 0,
     address: { street: '', number: '', complement: '', neighborhood: '', 
                city: '', state: '', zip_code: '' },
     business_hours: []
@@ -286,7 +286,7 @@ const Stores = () => {
   const resetForm = () => {
     setFormData({
       name: '', business_name: '', description: '', category: '', cnpj: '', 
-      email: '', phone: '',
+      email: '', phone: '', shipping_fee: 0,
       address: { street: '', number: '', complement: '', neighborhood: '', 
                  city: '', state: '', zip_code: '' },
       business_hours: []
@@ -306,6 +306,7 @@ const Stores = () => {
       cnpj: store.cnpj || '',
       email: store.email || '',
       phone: store.phone || '',
+      shipping_fee: store.shipping_fee || 0,
       address: store.address || { street: '', number: '', complement: '', 
                                    neighborhood: '', city: '', state: '', zip_code: '' },
       business_hours: store.business_hours || []
@@ -317,7 +318,7 @@ const Stores = () => {
     setEditingStore(null);
     setFormData({
       name: '', business_name: '', description: '', category: '', cnpj: '', 
-      email: '', phone: '',
+      email: '', phone: '', shipping_fee: 0,
       address: { street: '', number: '', complement: '', neighborhood: '', 
                  city: '', state: '', zip_code: '' },
       business_hours: []
@@ -402,24 +403,30 @@ const Stores = () => {
 
         // 3. Apaga imagens do storage (economia de espaço)
         if (images.length > 0) {
+          console.log('Tentando deletar imagens:', images);
+          
           const paths = images
             .map(url => {
               const match = url.match(/product-images\/(.+)$/);
-              return match ? match[1] : null;
+              const path = match ? match[1] : null;
+              console.log('URL:', url, '-> Path:', path);
+              return path;
             })
             .filter(Boolean);
           
-          console.log('Deletando imagens do produto:', paths);
+          console.log('Paths finais para deletar:', paths);
           
           if (paths.length > 0) {
-            const { error: storageError } = await supabase.storage
+            const { data, error: storageError } = await supabase.storage
               .from('product-images')
               .remove(paths);
             
             if (storageError) {
-              console.error('Erro ao remover imagens:', storageError);
+              console.error('❌ ERRO ao remover imagens do storage:', storageError);
+              console.error('Detalhes do erro:', JSON.stringify(storageError, null, 2));
+              showNotification('Produto removido mas erro ao deletar imagens', 'warning');
             } else {
-              console.log('Imagens removidas com sucesso');
+              console.log('✅ Imagens removidas com sucesso do storage:', data);
             }
           }
         }
@@ -582,7 +589,7 @@ const Stores = () => {
           </button>
           <h1>Minha Loja</h1>
         </div>
-        <div className="loading-message"></div>
+        <div className="loading-message">Carregando lojas...</div>
       </div>
     );
   }

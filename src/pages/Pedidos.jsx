@@ -476,24 +476,29 @@ const Pedidos = ({ user, userProfile, isVendor: isVendorProp }) => {
                                                             )}
                                                         </div>
                                                     ))}
-
-                                                    <div className='subtotal'>
-                                                        <span>
-                                                            Subtotal:
-                                                        </span>
-                                                        <span className="item-subtotal">
-                                                            R$ {loja.total.toFixed(2).replace('.', ',')}
-                                                        </span>
-                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
 
                                         <div className="pedido-total-expandido">
-                                            <span>Total do Pedido:</span>
-                                            <span>
-                                                R$ {pedido.order_items?.reduce((sum, item) => sum + parseFloat(item.subtotal), 0).toFixed(2).replace('.', ',')}
-                                            </span>
+                                            <div className="pedido-totais-detalhes">
+                                                <div className="total-linha">
+                                                    <span>Subtotal: </span>
+                                                    <span>R$ {(pedido.subtotal || 0).toFixed(2).replace('.', ',')}</span>
+                                                </div>
+                                                <div className="total-linha">
+                                                    <span>Frete: </span>
+                                                    <span>
+                                                        {pedido.shipping_fee > 0 
+                                                            ? `R$ ${pedido.shipping_fee.toFixed(2).replace('.', ',')}` 
+                                                            : 'Grátis'}
+                                                    </span>
+                                                </div>
+                                                <div className="total-linha total-final">
+                                                    <span>Total do Pedido: </span>
+                                                    <span>R$ {(pedido.total_amount || 0).toFixed(2).replace('.', ',')}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
