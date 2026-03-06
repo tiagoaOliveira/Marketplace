@@ -1,25 +1,20 @@
 .perfil-loja-container {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-  padding: 0;
+  background-color: transparent;
+  z-index: 0;
 }
 
 .loja-header {
-  position: relative;
-  width: 25%;
-  height: 140px;
-  margin-bottom: 3rem;
-  overflow: hidden;
+  height: 240px; 
 }
 
 .loja-banner-bg {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  width: 100%;
+  height: 240px;
+  z-index: 0; 
 }
 
 .loja-banner-bg img {
@@ -57,9 +52,9 @@
 }
 
 .loja-produtos-section {
+  position: relative;
   max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
+  z-index: 2;
 }
 
 .sem-produtos {
@@ -78,16 +73,17 @@
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  margin: 0.5rem 0;
 }
 
 /* Responsivo */
 @media (max-width: 768px) {
   .loja-header {
-    position: relative;
-    width: 100%;
-    height: 140px;
-    margin-bottom: 2rem;
+    height: 180px;
+    margin-bottom: 1rem;
+  }
+
+  .loja-banner-bg {
+    height: 180px;
   }
 
   .btn-voltar {

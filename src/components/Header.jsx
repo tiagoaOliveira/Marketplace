@@ -7,14 +7,14 @@ import Produtos from './Produtos'
 import { supabase } from '../lib/supabase'
 import Carrossel from "./Carrossel"
 import { useSlug } from '../hooks/useSlug'
-import { useProductModalContext } from '../contexts/ProductModalContext' 
+import { useProductModalContext } from '../contexts/ProductModalContext'
 
 function Header({ user }) {
   // Removido: States locais de modal (produtoSelecionado, modalAberto)
   const [pedidosPendentes, setPedidosPendentes] = useState(0);
-  
+
   const { createSlug } = useSlug();
-  
+
   // 2. Usar o contexto para pegar a função de abrir e o componente do Modal
   const { abrirModalProduto, ProductModal } = useProductModalContext();
 
@@ -44,14 +44,10 @@ function Header({ user }) {
     }
   };
 
-  // Removido: handleProductSelect (A lógica de formatação já existe dentro de abrirModalProduto no Context)
-
   const handleStoreSelect = (loja) => {
     const slug = createSlug(loja.name);
     window.location.href = `/loja/${slug}`;
   };
-
-  // Removido: fecharModal (Gerenciado pelo Context)
 
   return (
     <div className="header">
@@ -63,7 +59,7 @@ function Header({ user }) {
         </div>
         <div className="header-actions">
           <Link to="/Perfil" className="header-btn">
-            <User size={28} />
+            <User size={28} color='white' />
             {pedidosPendentes > 0 && (
               <span className="header-btn-badge">
                 {pedidosPendentes > 99 ? '99+' : pedidosPendentes}
@@ -71,23 +67,20 @@ function Header({ user }) {
             )}
           </Link>
           <Link to="Carrinho" className="header-btn">
-            <ShoppingCart size={28} />
+            <ShoppingCart size={28} color='white' />
           </Link>
         </div>
-      </div>
-
-      <div className="header-search">
-        <div className="search-wrapper">
-
-          <SearchSystem
-            onProductSelect={abrirModalProduto}
-            onStoreSelect={handleStoreSelect}
-          />
+        <div className="header-search">
+          <div className="search-wrapper">
+            <SearchSystem
+              onProductSelect={abrirModalProduto}
+              onStoreSelect={handleStoreSelect}
+            />
+          </div>
         </div>
-        <Carrossel />
       </div>
-
-      {/* Nota: Você precisará ajustar o componente Produtos para aceitar `onProdutoClick` ao invés de controlar o modal ele mesmo */}
+      
+      <Carrossel />
       <Produtos
         onProdutoClick={abrirModalProduto}
       />

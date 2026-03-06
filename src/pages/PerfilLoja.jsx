@@ -24,12 +24,26 @@ const PerfilLoja = () => {
 
   const [loja, setLoja] = useState(null);
   const [produtos, setProdutos] = useState([]);
+  const [produtosFiltrados, setProdutosFiltrados] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [processando, setProcessando] = useState({});
 
   useEffect(() => {
     initialize();
   }, [storeSlug]);
+
+  // Filtrar produtos quando busca mudar
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      const filtrados = produtos.filter(p => 
+        p.products.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setProdutosFiltrados(filtrados);
+    } else {
+      setProdutosFiltrados(produtos);
+    }
+  }, [searchTerm, produtos]);
 
   const initialize = async () => {
     try {
@@ -140,7 +154,7 @@ const PerfilLoja = () => {
   };
 
   if (loading) {
-    return <div className="perfil-loja-container"></div>;
+    return <div className="perfil-loja-container">Carregando...</div>;
   }
 
   if (!loja) {
@@ -171,8 +185,22 @@ const PerfilLoja = () => {
         {produtos.length === 0 ? (
           <p className="sem-produtos">Esta loja ainda não possui produtos cadastrados.</p>
         ) : (
-          <div className="produtos-grid">
-            {produtos.map(listing => {
+          <>
+            <div className="loja-busca">
+              <input
+                type="text"
+                placeholder="Buscar produtos nesta loja..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="loja-busca-input"
+              />
+            </div>
+            
+            {produtosFiltrados.length === 0 ? (
+              <p className="sem-produtos">Nenhum produto encontrado.</p>
+            ) : (
+              <div className="produtos-grid">
+                {produtosFiltrados.map(listing => {
               const quantidade = getQuantidade({ id: listing.id, productListingId: listing.id });
               const key = listing.id;
               const estaProcessando = processando[key];
@@ -224,6 +252,8 @@ const PerfilLoja = () => {
               );
             })}
           </div>
+            )}
+          </>
         )}
       </div>
     </div>

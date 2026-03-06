@@ -53,11 +53,12 @@ function SearchSystem({ onStoreSelect }) {
         parseFloat(curr.price) < parseFloat(min.price) ? curr : min
       );
       
-      // ✅ CORREÇÃO: Usar irParaLoja que usa navigate
       abrirModalProduto({
         id: listingMenorPreco.id,
         productListingId: listingMenorPreco.id,
+        productId: listingMenorPreco.products?.id || produto.id,  
         nome: produto.name,
+        descricao: produto.description,  
         preco: parseFloat(listingMenorPreco.price),
         stock: listingMenorPreco.stock,
         loja: listingMenorPreco.stores.name,
@@ -65,7 +66,7 @@ function SearchSystem({ onStoreSelect }) {
         images: produto.images || []
       }, {
         showControls: true,
-        onStoreClick: irParaLoja // ✅ Passa a função que usa navigate
+        onStoreClick: irParaLoja
       });
       
     } catch (err) {

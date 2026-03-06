@@ -79,7 +79,6 @@ export const searchService = {
       if (produtosData && produtosData.length > 0) {
       }
 
-      // Buscar lojas
       const { data: lojasData, error: erroLojas } = await supabase
         .from('stores')
         .select('id, name, category, description, email, phone')
@@ -242,9 +241,6 @@ export const searchService = {
     }
   },
 
-  /**
-   * Autocomplete - sugestões enquanto digita
-   */
   async getSearchSuggestions(termo, limit = 8) {
     if (!termo || termo.length < 2) {
       return { suggestions: [], error: null };

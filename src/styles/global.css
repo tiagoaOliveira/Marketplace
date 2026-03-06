@@ -22,13 +22,16 @@
   --btn-lg: 48px;
   --btn-md: 40px;
   --btn-sm: 32px;
+
+  /*Borda*/
+  --border-gray: 1px solid #9eaabb;
 }
 
 body {
   font-family: 'Inter', sans-serif;
   font-size: 16px;
   color: var(--neutral-900);
-  background-color: #667eea;
+  background-color: white;
 }
 
 /* Tipografia */

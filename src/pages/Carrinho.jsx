@@ -1,4 +1,3 @@
-// Carrinho.jsx - SIMPLIFICADO E SINCRONIZADO
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cartService } from '../lib/services';
@@ -12,7 +11,6 @@ import { useSlug } from '../hooks/useSlug';
 const CarrinhoCompras = () => {
   const navigate = useNavigate();
   
-  // ✅ Usar contexto para tudo relacionado ao carrinho
   const { abrirModalProduto, getQuantidade, adicionarAoCarrinho, removerDoCarrinho, recarregarCarrinho } = useProductModalContext();
   const { createSlug } = useSlug();
 
@@ -284,6 +282,7 @@ const CarrinhoCompras = () => {
       id: item.productListingId,
       productListingId: item.productListingId,
       nome: item.nome,
+      descricao: item.descricao,
       preco: item.preco,
       stock: item.stock,
       loja: item.storeName,

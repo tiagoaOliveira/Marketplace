@@ -73,10 +73,10 @@ const Carrossel = () => {
       <h2 className='carrossel-title'>Lojas Próximas</h2>
       <div className="slider">
         <div className="slide-track">
-          {displayStores.map((store, index) => (
+          {stores.map((store) => (
             <Link
               to={`/loja/${createSlug(store.name)}`}
-              key={`${store.id}-${index}`}
+              key={store.id}
               className="slide"
             >
               {store.banner_url && (

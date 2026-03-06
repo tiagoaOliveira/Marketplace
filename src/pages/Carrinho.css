@@ -1,8 +1,6 @@
-/* carrinho.css */
-
 .carrinho-container {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  background: transparent;
   padding: 2rem 1.5rem;
 }
 
@@ -83,7 +81,6 @@
 
 /* Grupo de Loja */
 .loja-grupo {
-  background: white;
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
@@ -95,7 +92,6 @@
 
 .loja-cabecalho {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 0.5rem 1.5rem;
   text-align: center;
 }
 
@@ -113,12 +109,10 @@
 
 /* Item do Carrinho */
 .carrinho-item {
-  background: white;
   padding: 1.5rem;
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  border-bottom: 1px solid #f1f5f9;
   cursor: pointer;
   transition: all 0.2s ease;
 }

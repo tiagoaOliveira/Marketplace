@@ -10,6 +10,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
+  padding-bottom: 0.5rem;
 }
 
 .produtos-vazio {
@@ -24,6 +25,7 @@
 .produto-card {
   background: white;
   border-radius: 20px;
+  border: 1px solid #9eaabb;
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -56,25 +58,25 @@
 .produto-nome-produtos {
   font-size: 18px;
   font-weight: 600;
-  color: #1e293b;
-  line-height: 1.1;
+  color: #0f172a;
+  line-height: 1.2;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
   overflow: hidden;
   word-break: break-word;
-  padding: 0.5rem;
+  padding: 1rem 0.75rem;
 }
 
 
 .produto-preco {
-  font-size: 26px;
+  font-size: 16px;
   font-weight: 800;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  padding: 0 1.5rem;
+  padding: 0 0.5rem;
 }
 
 .produto-controles {
@@ -82,7 +84,6 @@
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  margin: 0.5rem 0;
 }
 
 .btn-carrinho {
@@ -90,7 +91,7 @@
   height: 44px;
   border: none;
   border-radius: 12px;
-  color: #667eea;
+  color: #808ea1;
   background: transparent;
   font-size: 20px;
   font-weight: 700;
@@ -332,7 +333,7 @@
   display: flex;
   align-items: center;
   gap: 1.25rem;
-  margin: 0 auto;
+  margin: 0.5rem  auto;
   border-radius: 16px;
 }
 
@@ -386,11 +387,10 @@
 
   .produto-nome-produtos {
     font-size: 16px;
-    min-height: 44px;
   }
 
   .produto-preco {
-    font-size: 22px;
+    font-size: 16px;
   }
 
   .btn-carrinho {
