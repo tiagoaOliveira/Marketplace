@@ -57,6 +57,14 @@
   z-index: 2;
 }
 
+.loja-busca {
+  position: relative;
+  width: 350px;
+  margin: 0.5rem 0;
+  border: 1px solid gray;
+  border-radius: 16px;
+}
+
 .sem-produtos {
   text-align: center;
   color: #64748b;
@@ -79,7 +87,6 @@
 @media (max-width: 768px) {
   .loja-header {
     height: 180px;
-    margin-bottom: 1rem;
   }
 
   .loja-banner-bg {

@@ -1,7 +1,7 @@
-// PerfilLoja.jsx - CORRIGIDO PARA USAR CONTEXTO
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { storesService } from '../lib/services';
+import { Search} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNotification } from '../hooks/useNotification';
 import { useProductModalContext } from '../contexts/ProductModalContext.jsx';
@@ -187,12 +187,13 @@ const PerfilLoja = () => {
         ) : (
           <>
             <div className="loja-busca">
+              <Search className="search-icon" size={20}/>
               <input
                 type="text"
-                placeholder="Buscar produtos nesta loja..."
+                placeholder="Buscar produtos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="loja-busca-input"
+                className="search-input search-input-wrapper"
               />
             </div>
             
